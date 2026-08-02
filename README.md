@@ -75,7 +75,7 @@ Today it remains one of the add-ons I use most during my own studies.
 
 Download directly from:
 
-(Add your AnkiWeb link here)
+https://ankiweb.net/shared/info/2131608019
 
 ---
 
