@@ -30,7 +30,9 @@ Today it remains one of the add-ons I use most during my own studies.
 
 ### Center-Focused Review Layout
 
-![Center Layout](https://i.postimg.cc/Z5MHG7BG/2.png)
+![Center Layout](https://i.postimg.cc/6p9msM7b/image.png)
+
+![Center Layout](https://i.postimg.cc/fL0H7FFw/image.png)
 
 ---
 
