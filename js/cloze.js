@@ -12,6 +12,106 @@ window.toggleInfo = function(event) {
     }
 };
 
+// ---------------------------------------------------------------------------
+// Generic input-binding system (runtime half)
+//
+// The Qt settings dialog (bindings.py) lets the user attach any mix of
+// keyboard keys, mouse buttons, and mouse-wheel directions to an "action"
+// name, stored in config.actionBindings as { actionName: [ {type, value} ] }.
+// Everything below is action-agnostic: it just figures out which action(s)
+// a given browser event maps to and calls window.performAction(name) — the
+// same call regardless of whether a key, a click, or a wheel scroll
+// triggered it. Adding a future action (Reveal Previous, Reveal All, Reset
+// Reveal) only means adding a branch inside performAction().
+// ---------------------------------------------------------------------------
+
+// Mirrors bindings.py's qt_key_to_binding_name()/format_key_binding() so a
+// binding captured in the Qt dialog matches what a KeyboardEvent produces.
+//
+// Note: for accented / non-ASCII keys (e.g. "Å" on a Nordic layout), Qt and
+// Chromium can report the *same visible character* using different Unicode
+// normalization forms (composed "NFC" vs decomposed "NFD" — a single "Å"
+// code point vs "A" + a separate combining ring). They look identical but
+// fail a strict "===" comparison, so both this function's output and the
+// stored binding value are normalized to NFC before ever being compared
+// (see bindingListMatches below).
+function keyEventToBindingString(e) {
+    var parts = [];
+    if (e.ctrlKey) parts.push("Ctrl");
+    if (e.altKey) parts.push("Alt");
+    if (e.shiftKey) parts.push("Shift");
+    if (e.metaKey) parts.push("Meta");
+
+    var specialMap = {
+        " ": "Space",
+        "ArrowUp": "Up",
+        "ArrowDown": "Down",
+        "ArrowLeft": "Left",
+        "ArrowRight": "Right"
+    };
+
+    var key = e.key;
+    if (specialMap.hasOwnProperty(key)) {
+        key = specialMap[key];
+    } else if (key.length === 1) {
+        key = key.toUpperCase();
+    } else {
+        key = key.charAt(0).toUpperCase() + key.slice(1);
+    }
+    parts.push(key);
+    return normalizeKeyString(parts.join("+"));
+}
+
+// Best-effort Unicode normalization; String.prototype.normalize isn't
+// available in every embedded engine, so degrade gracefully if missing.
+function normalizeKeyString(s) {
+    if (typeof s !== "string") return s;
+    return typeof s.normalize === "function" ? s.normalize("NFC") : s;
+}
+
+// Mirrors bindings.py's MOUSE_BUTTON_NAMES.
+function mouseButtonName(button) {
+    switch (button) {
+        case 0: return "left";
+        case 1: return "middle";
+        case 2: return "right";
+        case 3: return "back";
+        case 4: return "forward";
+        default: return null;
+    }
+}
+
+function bindingListMatches(bindingList, type, value) {
+    if (!bindingList) return false;
+    // Normalize the incoming key value once; stored binding values are
+    // normalized per-entry below so this also self-heals bindings saved by
+    // an older build before this normalization fix existed.
+    var normValue = type === "key" ? normalizeKeyString(value) : value;
+    for (var i = 0; i < bindingList.length; i++) {
+        var b = bindingList[i];
+        if (!b || b.type !== type) continue;
+        var bValue = type === "key" ? normalizeKeyString(b.value) : b.value;
+        if (bValue === normValue) return true;
+    }
+    return false;
+}
+
+// Single dispatch point for every bindable action. New actions plug in here.
+window.performAction = function(action) {
+    if (action === "reveal") {
+        var hiddenCloze = document.querySelector(".cloze.active[data-state='hidden']");
+        if (hiddenCloze) {
+            window.revealCloze(hiddenCloze);
+        }
+    } else if (action === "reveal_previous") {
+        // Reserved for a future update.
+    } else if (action === "reveal_all") {
+        // Reserved for a future update.
+    } else if (action === "reset_reveal") {
+        // Reserved for a future update.
+    }
+};
+
 window.setupClozeInteractions = function() {
     // Only apply interaction logic if the custom .anki-card-container is present
     const container = document.querySelector(".anki-card-container");
@@ -40,7 +140,7 @@ window.setupClozeInteractions = function() {
         activeClozeIdx: 1,
         shortcutRoll: "Space",
         shortcutInfo: "I",
-        mouseScrollReveal: false
+        actionBindings: { reveal: [{ type: "wheel", value: "down" }] }
     };
 
     // Normalise activeClozeIdx to a plain integer.
@@ -274,6 +374,10 @@ window.setupClozeInteractions = function() {
     
     // Set up Keyboard Shortcuts
     document.onkeydown = function(e) {
+        // Isolation guard: this handler persists in the webview across card
+        // changes. Do nothing when our card type is no longer in the DOM.
+        if (!document.querySelector(".anki-card-container")) return;
+
         const rollKey = (config.shortcutRoll || "Space").toLowerCase();
         const infoKey = (config.shortcutInfo || "I").toLowerCase();
 
@@ -318,24 +422,88 @@ window.setupClozeInteractions = function() {
         }
     };
 
-    // Mouse scroll reveal
-    // Scroll down reveals the next hidden cloze, or flips the card when all
-    // are revealed. passive: false is required so preventDefault() can stop
-    // the page from scrolling while we handle the gesture ourselves.
-    if (config.mouseScrollReveal) {
-        document.addEventListener("wheel", function(e) {
-            if (e.deltaY > 0) {
-                // Scroll down — same logic as the roll shortcut
-                const hiddenCloze = document.querySelector(".cloze.active[data-state='hidden']");
-                if (hiddenCloze) {
-                    e.preventDefault();
-                    window.revealCloze(hiddenCloze);
-                } else {
-                    if (window.pycmd) window.pycmd("ans");
-                }
-            }
-        }, { passive: false });
+    // Generic input bindings (keyboard / mouse button / mouse wheel), wired
+    // up to whatever actions are configured in config.actionBindings.
+    // Always remove any previous listeners first — they're attached to
+    // `document`, which persists across card navigations in Anki's webview,
+    // so without explicit cleanup they'd accumulate and fire on every card
+    // type after the user has seen at least one Sequential card.
+    if (window._ibKeyHandler) {
+        document.removeEventListener("keydown", window._ibKeyHandler, true);
+        window._ibKeyHandler = null;
     }
+    if (window._ibMouseHandler) {
+        document.removeEventListener("mousedown", window._ibMouseHandler);
+        window._ibMouseHandler = null;
+    }
+    if (window._ibWheelHandler) {
+        document.removeEventListener("wheel", window._ibWheelHandler);
+        window._ibWheelHandler = null;
+    }
+
+    var actionBindings = config.actionBindings || {};
+
+    // Isolation guard: if the user has navigated to a different card type,
+    // our container is gone — detach every listener and bail.
+    var _ibAlive = function() {
+        if (document.querySelector(".anki-card-container")) return true;
+        if (window._ibKeyHandler) document.removeEventListener("keydown", window._ibKeyHandler, true);
+        if (window._ibMouseHandler) document.removeEventListener("mousedown", window._ibMouseHandler);
+        if (window._ibWheelHandler) document.removeEventListener("wheel", window._ibWheelHandler);
+        window._ibKeyHandler = window._ibMouseHandler = window._ibWheelHandler = null;
+        return false;
+    };
+
+    // Fires performAction() for every action bound to this (type, value)
+    // input — the same reveal logic runs whether a key, a click, or a wheel
+    // scroll triggered it.
+    var _ibDispatch = function(type, value) {
+        for (var action in actionBindings) {
+            if (bindingListMatches(actionBindings[action], type, value)) {
+                window.performAction(action);
+            }
+        }
+    };
+
+    window._ibKeyHandler = function(e) {
+        if (!_ibAlive()) return;
+        _ibDispatch("key", keyEventToBindingString(e));
+    };
+    document.addEventListener("keydown", window._ibKeyHandler, true);
+
+    window._ibMouseHandler = function(e) {
+        if (!_ibAlive()) return;
+        var btn = mouseButtonName(e.button);
+        if (!btn) return;
+        // Clicks landing directly on a cloze are already handled by the
+        // click-to-reveal listener set up above; don't double-fire.
+        if (e.target && e.target.closest && e.target.closest(".cloze")) return;
+        _ibDispatch("mouse_button", btn);
+    };
+    document.addEventListener("mousedown", window._ibMouseHandler);
+
+    // 400 ms cooldown prevents the 3-10 rapid wheel events a single scroll
+    // gesture fires from triggering an action multiple times per gesture.
+    var _ibWheelLocked = false;
+    window._ibWheelHandler = function(e) {
+        if (!_ibAlive() || _ibWheelLocked) return;
+        var dir = e.deltaY > 0 ? "down" : (e.deltaY < 0 ? "up" : null);
+        if (!dir) return;
+
+        var matched = false;
+        for (var action in actionBindings) {
+            if (bindingListMatches(actionBindings[action], "wheel", dir)) matched = true;
+        }
+        if (!matched) return;
+
+        // Only swallow the native scroll when a binding actually matched, so
+        // normal page scrolling still works when the wheel isn't bound.
+        e.preventDefault();
+        _ibWheelLocked = true;
+        setTimeout(function() { _ibWheelLocked = false; }, 400);
+        _ibDispatch("wheel", dir);
+    };
+    document.addEventListener("wheel", window._ibWheelHandler, { passive: false });
 };
 
 window.updateClozeSequencing = function() {

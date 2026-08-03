@@ -32,7 +32,7 @@ def init_addon() -> None:
     setup_menu()
 
 def setup_menu() -> None:
-    action_settings = QAction("Sequential Cloze Revealer Settings...", mw)
+    action_settings = QAction("Sequential Revealer", mw)
     qconnect(action_settings.triggered, reviewer.show_settings_dialog)
     mw.form.menuTools.addAction(action_settings)
 

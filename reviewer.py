@@ -5,6 +5,8 @@ from aqt import mw
 from aqt.utils import showInfo, qconnect
 from aqt.qt import *
 
+from . import bindings
+
 
 # ---------------------------------------------------------------------------
 # Theme detection
@@ -106,6 +108,55 @@ def _dialog_qss(t: dict) -> str:
         QLineEdit:focus, QSpinBox:focus {{
             border: 1px solid {t['input_focus']};
         }}
+        QGroupBox {{
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 11px;
+            font-weight: bold;
+            color: {t['section']};
+            border: 1px solid {t['sep']};
+            border-radius: 5px;
+            margin-top: 10px;
+            padding-top: 10px;
+        }}
+        QGroupBox::title {{
+            subcontrol-origin: margin;
+            left: 8px;
+            padding: 0 4px;
+        }}
+        QListWidget {{
+            background-color: {t['input_bg']};
+            border: 1px solid {t['input_border']};
+            border-radius: 3px;
+            color: {t['input_text']};
+            font-size: 11px;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }}
+        QTabWidget::pane {{
+            border: 1px solid {t['sep']};
+            border-radius: 6px;
+            padding: 12px;
+            top: -1px;
+        }}
+        QTabBar {{
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }}
+        QTabBar::tab {{
+            background: transparent;
+            color: {t['label_muted']};
+            font-size: 11px;
+            font-weight: bold;
+            padding: 6px 10px;
+            margin: 2px 2px 6px 0px;
+            border-radius: 5px;
+        }}
+        QTabBar::tab:selected {{
+            background: #0078d7;
+            color: #ffffff;
+        }}
+        QTabBar::tab:hover:!selected {{
+            background: {t['btn_hover_bg']};
+            color: {t['label']};
+        }}
     """
 
 
@@ -164,13 +215,14 @@ def setup_reviewer() -> None:
 
 def show_settings_dialog() -> None:
     config = mw.addonManager.getConfig(__name__) or {}
+    bindings.migrate_legacy_config(config)
     t = _theme()
     button_qss     = _button_qss(t)
     primary_button_qss = _PRIMARY_QSS
 
     dialog = QDialog(mw)
     dialog.setWindowTitle("Sequential Cloze Revealer Settings")
-    dialog.setMinimumWidth(390)
+    dialog.setMinimumWidth(460)
     dialog.setStyleSheet(_dialog_qss(t))
 
     layout = QVBoxLayout()
@@ -180,18 +232,6 @@ def show_settings_dialog() -> None:
     # ---- Header ----
     title_layout = QHBoxLayout()
     title_layout.setSpacing(6)
-    icon_label = QLabel()
-    addon_dir  = os.path.dirname(__file__)
-    logo_path  = os.path.join(addon_dir, "logo.svg")
-    logo_pixmap = QPixmap(logo_path)
-    if not logo_pixmap.isNull():
-        logo_pixmap = logo_pixmap.scaled(28, 28,
-                                         Qt.AspectRatioMode.KeepAspectRatio,
-                                         Qt.TransformationMode.SmoothTransformation)
-        icon_label.setPixmap(logo_pixmap)
-    else:
-        icon_label.setText("📂")
-    title_layout.addWidget(icon_label)
 
     title_text = QLabel("Sequential Cloze Revealer")
     title_font = QFont()
@@ -203,44 +243,80 @@ def show_settings_dialog() -> None:
     title_layout.addStretch()
     layout.addLayout(title_layout)
 
-    # ---- Form ----
-    form = QFormLayout()
-    form.setSpacing(6)
+    # ---- Helper: build a tab page wrapping a QFormLayout ----
+    def make_group(title: str) -> tuple:
+        page = QWidget()
+        page_layout = QVBoxLayout()
+        page_layout.setContentsMargins(4, 8, 4, 4)
+        box_form = QFormLayout()
+        box_form.setSpacing(6)
+        page_layout.addLayout(box_form)
+        page_layout.addStretch()
+        page.setLayout(page_layout)
+        tabs.addTab(page, title)
+        return page, box_form
+
+    tabs = QTabWidget()
+    tabs.setUsesScrollButtons(False)
+    tabs.tabBar().setExpanding(True)
+
+    # ================= General =================
+    general_box, general_form = make_group("General")
 
     center_mode_cb = QCheckBox()
     center_mode_cb.setChecked(config.get("center_mode", True))
-    form.addRow("Enable Centered Mode:", center_mode_cb)
+    general_form.addRow("Enable Centered Mode:", center_mode_cb)
 
     mitcent_mode_cb = QCheckBox()
     mitcent_mode_cb.setChecked(config.get("mitcent_mode", True))
-    form.addRow("Enable Mitcent Mode:", mitcent_mode_cb)
+    general_form.addRow("Enable Mitcent Mode:", mitcent_mode_cb)
+
+    show_info_cb = QCheckBox()
+    show_info_cb.setChecked(config.get("show_info_by_default", False))
+    general_form.addRow("Show Info by Default:", show_info_cb)
+
+    auto_reveal_back_cb = QCheckBox()
+    auto_reveal_back_cb.setChecked(config.get("auto_reveal_back", True))
+    general_form.addRow("Auto-reveal Back Card:", auto_reveal_back_cb)
+
+    # ================= Reveal Controls =================
+    reveal_box, reveal_form = make_group("Reveal Controls")
+
+    click_reveal_cb = QCheckBox()
+    click_reveal_cb.setChecked(config.get("enable_click_reveal", True))
+    reveal_form.addRow("Enable Click to Reveal:", click_reveal_cb)
 
     reveal_speed_sb = QSpinBox()
     reveal_speed_sb.setRange(0, 1000)
     reveal_speed_sb.setSingleStep(10)
     reveal_speed_sb.setSuffix(" ms")
     reveal_speed_sb.setValue(config.get("reveal_speed", 120))
-    form.addRow("Cloze Reveal Transition:", reveal_speed_sb)
+    reveal_form.addRow("Cloze Reveal Transition:", reveal_speed_sb)
 
-    click_reveal_cb = QCheckBox()
-    click_reveal_cb.setChecked(config.get("enable_click_reveal", True))
-    form.addRow("Enable Click to Reveal:", click_reveal_cb)
+    shortcut_roll_le = QLineEdit()
+    shortcut_roll_le.setText(config.get("shortcut_roll", "Space"))
+    reveal_form.addRow("Roll Shortcut Hotkey:", shortcut_roll_le)
 
-    show_info_cb = QCheckBox()
-    show_info_cb.setChecked(config.get("show_info_by_default", False))
-    form.addRow("Show Info by Default:", show_info_cb)
+    shortcut_info_le = QLineEdit()
+    shortcut_info_le.setText(config.get("shortcut_info", "I"))
+    reveal_form.addRow("Info Shortcut Hotkey:", shortcut_info_le)
 
-    dark_compat_cb = QCheckBox()
-    dark_compat_cb.setChecked(config.get("enable_dark_compatibility", True))
-    form.addRow("Enable Dark Compatibility:", dark_compat_cb)
+    # Generic input-binding list for the "Reveal" action — supports any mix
+    # of keyboard keys, mouse buttons, and mouse-wheel directions, and
+    # triggers the exact same reveal logic no matter which one fired it.
+    reveal_bindings_widget = bindings.BindingListWidget(
+        bindings.get_bindings(config, "reveal"), parent=dialog,
+        theme_qss=_dialog_qss(t) + button_qss)
+    reveal_bindings_widget.add_btn.setStyleSheet(button_qss)
+    reveal_bindings_widget.remove_btn.setStyleSheet(button_qss)
+    reveal_form.addRow("Reveal Bindings:", reveal_bindings_widget)
 
-    auto_reveal_back_cb = QCheckBox()
-    auto_reveal_back_cb.setChecked(config.get("auto_reveal_back", True))
-    form.addRow("Auto-reveal Back Card:", auto_reveal_back_cb)
+    # ================= Compatibility =================
+    compat_box, compat_form = make_group("Compatibility")
 
     cl_rev_custom_cb = QCheckBox()
     cl_rev_custom_cb.setChecked(config.get("cloze_revealed_custom", False))
-    form.addRow("Custom Cloze Word Color (Revealed):", cl_rev_custom_cb)
+    compat_form.addRow("Custom Cloze Word Color (Revealed):", cl_rev_custom_cb)
 
     cl_rev_layout = QHBoxLayout()
     cl_rev_color_le = QLineEdit()
@@ -267,11 +343,11 @@ def show_settings_dialog() -> None:
         f"background-color: {text or '#c00000'}; border: 1px solid #7a7a7a; border-radius: 3px;"))
     cl_rev_layout.addWidget(cl_rev_color_le)
     cl_rev_layout.addWidget(cl_rev_btn)
-    form.addRow("Revealed Word Color (Hex):", cl_rev_layout)
+    compat_form.addRow("Revealed Word Color (Hex):", cl_rev_layout)
 
     cl_hid_custom_cb = QCheckBox()
     cl_hid_custom_cb.setChecked(config.get("cloze_hidden_custom", False))
-    form.addRow("Custom Cloze Bracket Color (Hidden):", cl_hid_custom_cb)
+    compat_form.addRow("Custom Cloze Bracket Color (Hidden):", cl_hid_custom_cb)
 
     cl_hid_layout = QHBoxLayout()
     cl_hid_color_le = QLineEdit()
@@ -298,21 +374,7 @@ def show_settings_dialog() -> None:
         f"background-color: {text or '#0284c7'}; border: 1px solid #7a7a7a; border-radius: 3px;"))
     cl_hid_layout.addWidget(cl_hid_color_le)
     cl_hid_layout.addWidget(cl_hid_btn)
-    form.addRow("Hidden Bracket Color (Hex):", cl_hid_layout)
-
-    mouse_scroll_cb = QCheckBox()
-    mouse_scroll_cb.setChecked(config.get("mouse_scroll_reveal", False))
-    form.addRow("Mouse Scroll Reveal:", mouse_scroll_cb)
-
-    shortcut_roll_le = QLineEdit()
-    shortcut_roll_le.setText(config.get("shortcut_roll", "Space"))
-    form.addRow("Roll Shortcut Hotkey:", shortcut_roll_le)
-
-    shortcut_info_le = QLineEdit()
-    shortcut_info_le.setText(config.get("shortcut_info", "I"))
-    form.addRow("Info Shortcut Hotkey:", shortcut_info_le)
-
-    layout.addLayout(form)
+    compat_form.addRow("Hidden Bracket Color (Hex):", cl_hid_layout)
 
     # ---- Helper: separator line ----
     def make_sep(color: str, height: int = 1) -> QFrame:
@@ -323,15 +385,13 @@ def show_settings_dialog() -> None:
         sep.setMaximumHeight(height)
         return sep
 
-    layout.addWidget(make_sep(t['sep']))
-
-    help_lbl = QLabel("HELP & SUPPORT")
-    help_font = QFont()
-    help_font.setBold(True)
-    help_font.setPointSize(8)
-    help_lbl.setFont(help_font)
-    help_lbl.setStyleSheet(f"color: {t['label_muted']}; margin-bottom: 2px;")
-    layout.addWidget(help_lbl)
+    # ================= Help =================
+    help_page = QWidget()
+    help_page_layout = QVBoxLayout()
+    help_page_layout.setContentsMargins(4, 8, 4, 4)
+    help_page_layout.setSpacing(8)
+    help_page.setLayout(help_page_layout)
+    tabs.addTab(help_page, "Help")
 
     # ---- Help guide dialog ----
     def on_help_guide():
@@ -432,8 +492,8 @@ def show_settings_dialog() -> None:
 
         h_layout.addWidget(make_sep(t['thick_sep'], 2))
 
-        footnote_lbl = QLabel(
-            "<b>Sequential Cloze Revealer</b> v1.0.0 \u2014 Created by Adel")
+        footnote_lbl = QLabel("v1.0.0")
+        footnote_lbl.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         footnote_lbl.setStyleSheet(
             f"color: {t['label_muted']}; font-size: 10px; margin-top: 2px;")
         h_layout.addWidget(footnote_lbl)
@@ -444,7 +504,7 @@ def show_settings_dialog() -> None:
     guide_btn = QPushButton("Open Help Guide")
     guide_btn.setStyleSheet(button_qss)
     guide_btn.clicked.connect(on_help_guide)
-    layout.addWidget(guide_btn)
+    help_page_layout.addWidget(guide_btn)
 
     report_btn = QPushButton("\u2691 Report an Issue")
     report_btn.setStyleSheet(button_qss)
@@ -454,7 +514,7 @@ def show_settings_dialog() -> None:
         webbrowser.open("https://github.com/Doummar/Sequential_Cloze_Revealer/issues")
 
     report_btn.clicked.connect(on_report)
-    layout.addWidget(report_btn)
+    help_page_layout.addWidget(report_btn)
 
     reset_btn = QPushButton("\u21ba Reset to Default")
     reset_btn.setStyleSheet(button_qss)
@@ -474,6 +534,13 @@ def show_settings_dialog() -> None:
             "cloze_hidden_custom": False,
             "cloze_hidden_color": "#0284c7",
             "welcome_shown": True,
+            "shortcut_roll": "Space",
+            "shortcut_info": "I",
+            "auto_theme_mode": True,
+            "input_bindings": {
+                action: [dict(b) for b in blist]
+                for action, blist in bindings.DEFAULT_BINDINGS.items()
+            },
         })
         mw.addonManager.writeConfig(__name__, config)
         dialog.reject()
@@ -481,9 +548,10 @@ def show_settings_dialog() -> None:
         show_settings_dialog()
 
     reset_btn.clicked.connect(on_reset)
-    layout.addWidget(reset_btn)
+    help_page_layout.addWidget(reset_btn)
+    help_page_layout.addStretch()
 
-    layout.addWidget(make_sep(t['sep']))
+    layout.addWidget(tabs)
 
     # ---- Save / Cancel ----
     buttons = QDialogButtonBox(
@@ -496,16 +564,14 @@ def show_settings_dialog() -> None:
         config["reveal_speed"]              = reveal_speed_sb.value()
         config["enable_click_reveal"]       = click_reveal_cb.isChecked()
         config["show_info_by_default"]      = show_info_cb.isChecked()
-        config["enable_dark_compatibility"] = dark_compat_cb.isChecked()
         config["auto_reveal_back"]          = auto_reveal_back_cb.isChecked()
         config["cloze_revealed_custom"]     = cl_rev_custom_cb.isChecked()
         config["cloze_revealed_color"]      = cl_rev_color_le.text()
         config["cloze_hidden_custom"]       = cl_hid_custom_cb.isChecked()
         config["cloze_hidden_color"]        = cl_hid_color_le.text()
-        config["mouse_scroll_reveal"]       = mouse_scroll_cb.isChecked()
-        config["auto_theme_mode"]           = True
         config["shortcut_roll"]             = shortcut_roll_le.text()
         config["shortcut_info"]             = shortcut_info_le.text()
+        bindings.set_bindings(config, "reveal", reveal_bindings_widget.bindings())
         mw.addonManager.writeConfig(__name__, config)
         dialog.accept()
         showInfo(

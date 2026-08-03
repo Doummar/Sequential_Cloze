@@ -13,5 +13,10 @@
   "mouse_scroll_reveal": false,
   "shortcut_info": "I",
   "shortcut_roll": "Space",
-  "auto_theme_mode": true
+  "auto_theme_mode": true,
+  "input_bindings": {
+    "reveal": [
+      { "type": "wheel", "value": "down" }
+    ]
+  }
 }
