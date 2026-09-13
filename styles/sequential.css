@@ -1,135 +1,747 @@
-/* Sequential Cloze Revealer CSS */
+/* ==========================================================================
+   Sequential Cloze Revealer - Sentence Builder Visual Style
+   Strictly Scoped to .anki-card-container, Native Light & Night Mode Support
+   Does NOT affect any other note types or native Anki controls
+   ========================================================================== */
 
-:root {
-  --cloze-current-bg: transparent;
-  --cloze-current-text: currentColor;
-  --cloze-current-border: transparent;
-  --cloze-current-hover-bg: transparent;
-  --cloze-sibling-bg: transparent;
-  --cloze-sibling-text: currentColor;
-  --cloze-sibling-border: transparent;
-  --cloze-sibling-hover-bg: transparent;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --cloze-current-bg: transparent;
-    --cloze-current-text: currentColor;
-    --cloze-current-border: transparent;
-    --cloze-current-hover-bg: transparent;
-    --cloze-sibling-bg: transparent;
-    --cloze-sibling-text: currentColor;
-    --cloze-sibling-border: transparent;
-    --cloze-sibling-hover-bg: transparent;
-  }
-}
-
+/* Scoped Reset & Card Container */
 .anki-card-container {
+  --card-font-family: inherit;
+  --card-font-size: 18px;
   display: flex;
   flex-direction: column;
+  width: 100%;
   max-width: 800px;
   margin: 0 auto;
   box-sizing: border-box;
   padding: 24px;
   background-color: transparent;
-  font-family: inherit;
-  font-size: 21px;
+  font-family: var(--card-font-family, inherit);
+  font-size: var(--card-font-size, 18px);
   position: relative;
 }
 
-/* Mitcent Mode - Horizontally & Vertically centered
-   Uses flex-start + padding-top instead of justify-content: center so the
-   front content anchors to the same Y position on both front and back cards.
-   With justify-content: center the back card (which has extra hr + back content)
-   would push .minimal-front upward, causing the visible text jump on card flip. */
-.anki-card-container.mitcent-mode {
-  align-items: center;
-  justify-content: flex-start;
-  padding-top: 35vh;
-  min-height: 80vh;
-  text-align: center;
+/* ==========================================================================
+   Card Position Settings
+   Vertical Position: Top / Center / Bottom
+   Horizontal Alignment: Left / Center / Right
+   ========================================================================== */
+
+/* --- Vertical Position --- */
+.anki-card-container.vpos-top {
+  justify-content: flex-start !important;
+  padding-top: 36px !important;
+  padding-bottom: 24px !important;
+  min-height: auto !important;
 }
 
-.anki-card-container.mitcent-mode .minimal-front,
-.anki-card-container.mitcent-mode .minimal-back {
-  text-align: center;
+.anki-card-container.vpos-center {
+  justify-content: center !important;
+  padding-top: 24px !important;
+  padding-bottom: 24px !important;
+  min-height: calc(100vh - 4px) !important;
 }
 
-/* Center Mode - Horizontally centered, top-aligned */
-.anki-card-container.center-mode:not(.mitcent-mode) {
-  align-items: center;
-  justify-content: flex-start;
-  margin-top: 5vh;
-  min-height: auto;
-  text-align: center;
+.anki-card-container.vpos-bottom {
+  justify-content: flex-end !important;
+  padding-top: 24px !important;
+  padding-bottom: 36px !important;
+  min-height: calc(100vh - 4px) !important;
 }
 
-.anki-card-container.center-mode:not(.mitcent-mode) .minimal-front,
-.anki-card-container.center-mode:not(.mitcent-mode) .minimal-back {
-  text-align: center;
-}
-
-/* Left Mode (Default) */
+/* --- Horizontal Alignment: Left --- */
+.anki-card-container.halign-left,
 .anki-card-container.left-mode {
-  align-items: flex-start;
-  justify-content: flex-start;
-  margin-top: 5vh;
-  min-height: auto;
-  text-align: left;
+  align-items: flex-start !important;
+  text-align: left !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+  width: 100% !important;
+  max-width: 800px !important;
+  padding-left: 36px !important;
+  padding-right: 36px !important;
+  box-sizing: border-box !important;
 }
 
+.anki-card-container.halign-left .minimal-front,
+.anki-card-container.halign-left .minimal-back,
 .anki-card-container.left-mode .minimal-front,
 .anki-card-container.left-mode .minimal-back {
-  text-align: left;
+  text-align: left !important;
+  width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
 }
 
-/* Back compatibility / default state if classes are not yet populated */
-.anki-card-container:not(.center-mode):not(.left-mode):not(.mitcent-mode) {
-  align-items: center;
-  justify-content: flex-start;
-  padding-top: 35vh;
-  min-height: 80vh;
-  text-align: center;
+.anki-card-container.halign-left ul,
+.anki-card-container.halign-left ol,
+.anki-card-container.left-mode ul,
+.anki-card-container.left-mode ol {
+  display: block !important;
+  text-align: left !important;
+  margin: 12px 0 !important;
+  padding-left: 28px !important;
+  padding-right: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
-.anki-card-container:not(.center-mode):not(.left-mode):not(.mitcent-mode) .minimal-front,
-.anki-card-container:not(.center-mode):not(.left-mode):not(.mitcent-mode) .minimal-back {
-  text-align: center;
+.anki-card-container.halign-left ul li,
+.anki-card-container.halign-left ol li,
+.anki-card-container.left-mode ul li,
+.anki-card-container.left-mode ol li {
+  text-align: left !important;
 }
 
-/* Center study content vertically and horizontally */
-.minimal-front, .minimal-back {
-  font-size: 1.2em;
+.anki-card-container.halign-left #answer-splitter,
+.anki-card-container.left-mode #answer-splitter {
+  margin: 20px 0 !important;
+  margin-right: auto !important;
+}
+
+.anki-card-container.halign-left .minimal-explanation,
+.anki-card-container.left-mode .minimal-explanation {
+  margin: 16px 0 0 0 !important;
+  margin-right: auto !important;
+  text-align: left !important;
+  max-width: 760px !important;
+}
+
+.anki-card-container.halign-left #extra-area,
+.anki-card-container.left-mode #extra-area {
+  text-align: left !important;
+  margin: 16px 0 !important;
+  margin-right: auto !important;
+  width: 100% !important;
+}
+
+.anki-card-container.halign-left #extra-area .info-content,
+.anki-card-container.left-mode #extra-area .info-content {
+  text-align: left !important;
+  margin: 12px 0 !important;
+  margin-right: auto !important;
+  max-width: 760px !important;
+}
+
+.anki-card-container.halign-left .img-area,
+.anki-card-container.left-mode .img-area {
+  text-align: left !important;
+  margin: 16px 0 !important;
+  margin-right: auto !important;
+  width: 100% !important;
+}
+
+.anki-card-container.halign-left .img-area img,
+.anki-card-container.halign-left #extra-area img,
+.anki-card-container.left-mode .img-area img,
+.anki-card-container.left-mode #extra-area img {
+  margin: 0 auto 0 0 !important;
+}
+
+/* --- Horizontal Alignment: Center --- */
+.anki-card-container.halign-center,
+.anki-card-container.center-mode {
+  align-items: center !important;
+  text-align: center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  width: 100% !important;
+  max-width: 800px !important;
+  padding-left: 24px !important;
+  padding-right: 24px !important;
+}
+
+.anki-card-container.mitcent-mode {
+  justify-content: center !important;
+  min-height: calc(100vh - 4px) !important;
+}
+
+.anki-card-container.halign-center .minimal-front,
+.anki-card-container.halign-center .minimal-back,
+.anki-card-container.center-mode .minimal-front,
+.anki-card-container.center-mode .minimal-back {
+  text-align: center !important;
+  width: 100% !important;
+}
+
+.anki-card-container.halign-center ul,
+.anki-card-container.halign-center ol,
+.anki-card-container.center-mode ul,
+.anki-card-container.center-mode ol {
+  display: inline-block !important;
+  text-align: left !important;
+  margin: 12px auto !important;
+  padding-left: 24px !important;
+}
+
+.anki-card-container.halign-center #answer-splitter,
+.anki-card-container.center-mode #answer-splitter {
+  margin: 20px auto !important;
+}
+
+.anki-card-container.halign-center .minimal-explanation,
+.anki-card-container.center-mode .minimal-explanation {
+  margin: 16px auto 0 auto !important;
+  text-align: left !important;
+  max-width: 660px !important;
+}
+
+.anki-card-container.halign-center #extra-area,
+.anki-card-container.center-mode #extra-area {
+  text-align: center !important;
+  margin: 16px auto !important;
+  width: 100% !important;
+}
+
+.anki-card-container.halign-center #extra-area .info-content,
+.anki-card-container.center-mode #extra-area .info-content {
+  text-align: left !important;
+  margin: 12px auto !important;
+  max-width: 600px !important;
+}
+
+.anki-card-container.halign-center .img-area,
+.anki-card-container.center-mode .img-area {
+  text-align: center !important;
+  margin: 16px auto !important;
+  width: 100% !important;
+}
+
+.anki-card-container.halign-center .img-area img,
+.anki-card-container.halign-center #extra-area img,
+.anki-card-container.center-mode .img-area img,
+.anki-card-container.center-mode #extra-area img {
+  margin: 0 auto !important;
+}
+
+/* --- Horizontal Alignment: Right --- */
+.anki-card-container.halign-right {
+  align-items: flex-end !important;
+  text-align: right !important;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+  max-width: 800px !important;
+  padding-left: 36px !important;
+  padding-right: 36px !important;
+  box-sizing: border-box !important;
+}
+
+.anki-card-container.halign-right .minimal-front,
+.anki-card-container.halign-right .minimal-back {
+  text-align: right !important;
+  width: 100% !important;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+.anki-card-container.halign-right ul,
+.anki-card-container.halign-right ol {
+  display: block !important;
+  text-align: right !important;
+  margin: 12px 0 12px auto !important;
+  padding-left: 0 !important;
+  padding-right: 28px !important;
+  list-style-position: inside !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.anki-card-container.halign-right ul li,
+.anki-card-container.halign-right ol li {
+  text-align: right !important;
+}
+
+.anki-card-container.halign-right #answer-splitter {
+  margin: 20px 0 20px auto !important;
+}
+
+.anki-card-container.halign-right .minimal-explanation {
+  margin: 16px 0 0 auto !important;
+  text-align: right !important;
+  max-width: 760px !important;
+}
+
+.anki-card-container.halign-right #extra-area {
+  text-align: right !important;
+  margin: 16px 0 16px auto !important;
+  width: 100% !important;
+}
+
+.anki-card-container.halign-right #extra-area .info-content {
+  text-align: right !important;
+  margin: 12px 0 12px auto !important;
+  max-width: 760px !important;
+}
+
+.anki-card-container.halign-right .img-area {
+  text-align: right !important;
+  margin: 16px 0 16px auto !important;
+  width: 100% !important;
+}
+
+.anki-card-container.halign-right .img-area img,
+.anki-card-container.halign-right #extra-area img {
+  margin: 0 0 0 auto !important;
+}
+
+/* Default Fallbacks */
+.anki-card-container:not(.vpos-top):not(.vpos-center):not(.vpos-bottom) {
+  justify-content: center !important;
+  min-height: calc(100vh - 4px) !important;
+}
+
+.anki-card-container:not(.halign-left):not(.halign-center):not(.halign-right):not(.left-mode):not(.center-mode) {
+  align-items: center !important;
+  text-align: center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  max-width: 800px !important;
+}
+
+/* Study Content Typography */
+.anki-card-container .minimal-front,
+.anki-card-container .minimal-back {
+  font-family: inherit;
+  font-size: var(--card-font-size, 18px);
   line-height: 1.6;
   max-width: 100%;
   width: 100%;
   word-wrap: break-word;
 }
 
-.anki-card-container ul, .anki-card-container ol {
-  display: inline-block;
+.anki-card-container ul,
+.anki-card-container ol {
+  margin: 12px 0;
+  padding-left: 28px;
+  box-sizing: border-box;
+}
+
+/* Minimal Answer Splitter */
+.anki-card-container #answer-splitter {
+  width: 40px;
+  border: 0;
+  border-top: 1px solid #e0e0e0;
+  margin: 24px auto 20px auto;
+}
+
+body.nightMode .anki-card-container #answer-splitter,
+.nightMode .anki-card-container #answer-splitter,
+body.night_mode .anki-card-container #answer-splitter {
+  border-top-color: #36363a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.lightMode) .anki-card-container #answer-splitter {
+    border-top-color: #36363a;
+  }
+}
+
+/* Minimal Explanation Block
+   Light mode = soft light box (#f7f7f7)
+   Night mode = soft dark box (#242426)
+   Follows ONLY Anki nightMode classes — never OS prefers-color-scheme.
+   This keeps Light mode correct even when Windows is in Dark mode.
+*/
+.anki-card-container .minimal-explanation {
+  font-size: 0.85em;
+  line-height: 1.5;
+  color: #666;
+  background-color: #f7f7f7;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 18px auto 0 auto;
+  max-width: 660px;
+  width: 100%;
+  box-sizing: border-box;
   text-align: left;
-  margin: 12px auto;
-}
-
-/* Rounded corners disabled on images */
-.minimal-image img {
-  max-width: 90% !important;
-  height: auto;
-  margin: 20px auto;
   display: block;
-  border-radius: 0 !important;
-  box-shadow: none !important;
+  overflow: visible;
+  white-space: normal;
+  word-wrap: break-word;
+  word-break: break-word;
 }
 
-/* Cloze visual states */
+body.nightMode .anki-card-container .minimal-explanation,
+.nightMode .anki-card-container .minimal-explanation,
+body.night_mode .anki-card-container .minimal-explanation {
+  color: #aaa;
+  background-color: #242426;
+  border: 1px solid #36363a;
+}
+/* ==========================================================================
+   Controls Position (.ctrl inside .anki-card-container)
+   - Top Right (default)
+   - Top Left
+   - Bottom Right
+   - Bottom Left
+   ========================================================================== */
+.anki-card-container .ctrl {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  z-index: 100;
+}
+
+.anki-card-container .ctrl.pos-top-right,
+.anki-card-container .ctrl-top-right {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  bottom: auto;
+  left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  z-index: 100;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.anki-card-container .ctrl.pos-top-left,
+.anki-card-container .ctrl-top-left {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  bottom: auto;
+  right: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  z-index: 100;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.anki-card-container .ctrl.pos-bottom-right,
+.anki-card-container .ctrl-bottom-right {
+  position: fixed;
+  bottom: 14px;
+  right: 14px;
+  top: auto;
+  left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  z-index: 100;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.anki-card-container .ctrl.pos-bottom-left,
+.anki-card-container .ctrl-bottom-left {
+  position: fixed;
+  bottom: 14px;
+  left: 14px;
+  top: auto;
+  right: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  z-index: 100;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* ==========================================================================
+   AnkiWeb Safe Control Bar Positioning & Platform Isolation
+   On Desktop / AnkiMobile / AnkiDroid: .ctrl uses position: fixed;
+   On AnkiWeb: .ctrl uses position: absolute relative to .anki-card-container
+   with safe top offset (14px) to prevent overlapping AnkiWeb navbar/headers.
+   ========================================================================== */
+.anki-card-container.is-ankiweb .ctrl,
+.is-ankiweb .anki-card-container .ctrl {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  bottom: auto;
+  left: auto;
+  z-index: 100;
+  pointer-events: auto !important;
+}
+
+.anki-card-container.is-ankiweb .ctrl.pos-top-left,
+.anki-card-container.is-ankiweb .ctrl-top-left,
+.is-ankiweb .anki-card-container .ctrl.pos-top-left,
+.is-ankiweb .anki-card-container .ctrl-top-left {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: auto;
+  bottom: auto;
+  align-items: flex-start;
+}
+
+.anki-card-container.is-ankiweb .ctrl.pos-top-right,
+.anki-card-container.is-ankiweb .ctrl-top-right,
+.is-ankiweb .anki-card-container .ctrl.pos-top-right,
+.is-ankiweb .anki-card-container .ctrl-top-right {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  left: auto;
+  bottom: auto;
+  align-items: flex-end;
+}
+
+.anki-card-container.is-ankiweb .ctrl.pos-bottom-right,
+.anki-card-container.is-ankiweb .ctrl-bottom-right,
+.is-ankiweb .anki-card-container .ctrl.pos-bottom-right,
+.is-ankiweb .anki-card-container .ctrl-bottom-right {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  top: auto;
+  left: auto;
+  align-items: flex-end;
+}
+
+.anki-card-container.is-ankiweb .ctrl.pos-bottom-left,
+.anki-card-container.is-ankiweb .ctrl-bottom-left,
+.is-ankiweb .anki-card-container .ctrl.pos-bottom-left,
+.is-ankiweb .anki-card-container .ctrl-bottom-left {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  top: auto;
+  right: auto;
+  align-items: flex-start;
+}
+
+/* Scoped Native Audio Replay Button Support in .ctrl */
+.anki-card-container .ctrl .replay-button,
+.anki-card-container .ctrl .soundLink,
+.anki-card-container .ctrl a[href*="play"],
+.anki-card-container .ctrl a.replay-button,
+.anki-card-container .ctrl button.replay-button {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-decoration: none !important;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  opacity: 0.85;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+  z-index: 10;
+}
+
+.anki-card-container .ctrl .replay-button:hover,
+.anki-card-container .ctrl .soundLink:hover {
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.anki-card-container .ctrl .replay-button:active,
+.anki-card-container .ctrl .soundLink:active {
+  transform: scale(0.95);
+}
+
+.anki-card-container .ctrl .replay-button svg,
+.anki-card-container .ctrl .soundLink svg,
+.anki-card-container .ctrl .playImage {
+  display: block !important;
+  width: 26px !important;
+  height: 26px !important;
+  pointer-events: none;
+}
+
+/* Exact .ibtn Button System for Image/Info buttons only */
+.anki-card-container .ibtn {
+  min-width: auto;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: #aaa;
+  white-space: nowrap;
+  line-height: 1;
+  opacity: 0.65;
+  transition: all 0.15s ease;
+}
+
+.anki-card-container .ibtn:hover {
+  opacity: 1;
+  color: #666;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.anki-card-container .ibtn.active {
+  opacity: 1;
+  color: #222;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* Night mode for .ibtn */
+.nightMode .anki-card-container .ibtn,
+body.nightMode .anki-card-container .ibtn,
+body.night_mode .anki-card-container .ibtn {
+  color: #777;
+  opacity: 0.55;
+  background: transparent;
+}
+
+.nightMode .anki-card-container .ibtn:hover,
+body.nightMode .anki-card-container .ibtn:hover,
+body.night_mode .anki-card-container .ibtn:hover {
+  opacity: 0.9;
+  color: #ccc;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.nightMode .anki-card-container .ibtn.active,
+body.nightMode .anki-card-container .ibtn.active,
+body.night_mode .anki-card-container .ibtn.active {
+  opacity: 1;
+  color: #eee;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.lightMode) .anki-card-container .ibtn {
+    color: #777;
+    opacity: 0.55;
+    background: transparent;
+  }
+  :root:not(.lightMode) .anki-card-container .ibtn:hover {
+    opacity: 0.9;
+    color: #ccc;
+    background: rgba(255, 255, 255, 0.06);
+  }
+  :root:not(.lightMode) .anki-card-container .ibtn.active {
+    opacity: 1;
+    color: #eee;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* SVG icons inside .ibtn */
+.anki-card-container .ibtn svg,
+.anki-card-container .ibtn .ibtn-icon {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  fill: currentColor;
+  vertical-align: middle;
+  display: inline-block;
+  pointer-events: none;
+}
+
+.anki-card-container .ibtn svg[fill="none"],
+.anki-card-container .ibtn .ibtn-icon[fill="none"] {
+  fill: none;
+}
+
+/* Hidden raw data class */
+.anki-card-container .ms {
+  display: none !important;
+}
+
+/* ==========================================================================
+   Image System (.img-area for Visible Image, #extra-area for injected Image/Info)
+   ========================================================================== */
+
+/* Visible Image */
+.anki-card-container .img-area {
+  margin: 16px auto;
+  max-width: 100%;
+  text-align: center;
+}
+
+.anki-card-container .img-area img {
+  max-width: 90% !important;
+  max-height: 480px;
+  height: auto;
+  margin: 0 auto;
+  display: block;
+  border-radius: 6px;
+}
+
+/* Extra Area - dynamically injected content */
+.anki-card-container #extra-area {
+  margin: 16px auto;
+  max-width: 100%;
+  text-align: center;
+  transition: opacity 0.15s ease;
+}
+
+.anki-card-container #extra-area:empty {
+  display: none !important;
+}
+
+.anki-card-container #extra-area img {
+  max-width: 90% !important;
+  max-height: 480px;
+  height: auto;
+  margin: 0 auto;
+  display: block;
+  border-radius: 6px;
+}
+
+.anki-card-container #extra-area .info-content {
+  font-size: 14px;
+  line-height: 1.55;
+  color: #555;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+  padding: 10px 14px;
+  max-width: 600px;
+  margin: 12px auto;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+body.nightMode .anki-card-container #extra-area .info-content,
+.nightMode .anki-card-container #extra-area .info-content,
+body.night_mode .anki-card-container #extra-area .info-content {
+  color: #bbb;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.lightMode) .anki-card-container #extra-area .info-content {
+    color: #bbb;
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* ==========================================================================
+   Cloze States & Reveals (strictly scoped to .anki-card-container)
+   ========================================================================== */
 .anki-card-container .cloze {
   transition: opacity var(--reveal-speed, 120ms) ease;
   padding: 0;
-  pointer-events: auto !important; /* Force clickability in all Anki devices */
+  pointer-events: auto !important;
 }
 
-/* Active cloze is formatted as bold clickable inline text without backgrounds or colors */
+/* Active cloze */
 .anki-card-container .cloze.active {
   background-color: transparent !important;
   color: var(--cloze-hidden-color, inherit) !important;
@@ -151,20 +763,15 @@
   transform: none !important;
 }
 
-/* Highlight current active cloze - kept clean and transparent to match black styling */
+/* Current target cloze */
 .anki-card-container .cloze.active.current-cloze {
   background-color: transparent !important;
-  color: inherit !important;
+  color: var(--cloze-hidden-color, inherit) !important;
   border: none !important;
   box-shadow: none !important;
 }
 
-.anki-card-container .cloze.active.current-cloze:hover {
-  background-color: transparent !important;
-  box-shadow: none !important;
-}
-
-/* Once revealed, active clozes match standard inline text and remain bold */
+/* Revealed cloze */
 .anki-card-container .cloze.active[data-state="revealed"] {
   background: none !important;
   border: none !important;
@@ -177,13 +784,7 @@
   display: inline !important;
 }
 
-@media (prefers-color-scheme: dark) {
-  .anki-card-container .cloze.active[data-state="revealed"] {
-    color: var(--cloze-revealed-color, inherit) !important;
-  }
-}
-
-/* Passive cloze: completely standard normal body text to match traditional cloze layout */
+/* Passive cloze */
 .anki-card-container .cloze.passive {
   color: inherit !important;
   font-weight: normal !important;
@@ -192,166 +793,4 @@
   cursor: pointer !important;
   text-decoration: none !important;
   pointer-events: auto !important;
-}
-
-@media (prefers-color-scheme: dark) {
-  .anki-card-container .cloze.passive {
-    color: inherit !important;
-  }
-}
-
-/* Toggle info styling */
-.minimal-info-toggle {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 8px;
-  color: #adb5bd;
-  transition: color 120ms;
-  position: fixed;
-  right: 20px;
-  top: 108px;
-  margin: 0 !important;
-  z-index: 10000;
-}
-
-.minimal-info-toggle:hover {
-  color: #6c757d;
-}
-
-.minimal-info-toggle svg {
-  width: 22px;
-  height: 22px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.minimal-info {
-  font-size: 13px;
-  line-height: 1.4;
-  color: #6c757d;
-  background-color: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
-  padding: 12px;
-  text-align: left;
-  width: 260px;
-  position: fixed;
-  right: 20px;
-  top: 148px;
-  margin: 0 !important;
-  z-index: 9999;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.minimal-info.hidden {
-  display: none !important;
-}
-
-#answer-splitter {
-  width: 60px;
-  border: 0;
-  border-top: 1px solid #dee2e6;
-  margin: 24px auto;
-}
-
-@media (prefers-color-scheme: dark) {
-  .minimal-info-toggle {
-    color: #495057;
-  }
-  
-  .minimal-info-toggle:hover {
-    color: #ced4da;
-  }
-  
-  .minimal-info {
-    color: #adb5bd;
-    background-color: #121212;
-    border: 1px solid #2d3035;
-  }
-  
-  #answer-splitter {
-    border-top: 1px solid #2d3035;
-  }
-}
-
-/* Sound play buttons aligned absolutely at the top right of the screen */
-.minimal-sound {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  margin: 0 !important;
-  z-index: 10000;
-}
-
-.minimal-sound.back-sound {
-  top: 64px; /* Offset below front sound if both are rendered */
-}
-
-.minimal-sound .replay-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #fffffff2;
-  border: 1px solid #dee2e6;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  transition: all 120ms;
-}
-
-.minimal-sound .replay-button:hover {
-  background-color: #f1f3f5;
-  transform: scale(1.05);
-}
-
-@media (prefers-color-scheme: dark) {
-  .minimal-sound .replay-button {
-    background-color: #1c1c1ef2;
-    border: 1px solid #2d3035;
-    color: #f8f9fa;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-  }
-  .minimal-sound .replay-button:hover {
-    background-color: #2c2c2e;
-  }
-}
-
-/* Anki night_mode class — fallback for environments where the WebView does not
-   honour prefers-color-scheme: dark (older Qt / Anki versions use .night_mode
-   on <body> instead of setting the media query). Mirrors the @media rules above. */
-body.night_mode .minimal-info-toggle {
-  color: #495057;
-}
-
-body.night_mode .minimal-info-toggle:hover {
-  color: #ced4da;
-}
-
-body.night_mode .minimal-info {
-  color: #adb5bd;
-  background-color: #121212;
-  border: 1px solid #2d3035;
-}
-
-body.night_mode #answer-splitter {
-  border-top: 1px solid #2d3035;
-}
-
-body.night_mode .minimal-sound .replay-button {
-  background-color: #1c1c1ef2;
-  border: 1px solid #2d3035;
-  color: #f8f9fa;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-}
-
-body.night_mode .minimal-sound .replay-button:hover {
-  background-color: #2c2c2e;
 }

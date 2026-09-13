@@ -6,6 +6,7 @@ import json
 from aqt import mw, gui_hooks
 
 from . import bindings
+from .reviewer import get_addon_config, get_addon_pkg
 
 def get_payload_and_resources(card=None):
     addon_dir = os.path.dirname(__file__)
@@ -22,7 +23,12 @@ def get_payload_and_resources(card=None):
         with open(css_path, "r", encoding="utf-8") as f:
             css_content = f.read()
 
-    config = mw.addonManager.getConfig(__name__) or {}
+    config = get_addon_config()
+    controls_pos          = f'"{config.get("controls_position", "top-right")}"'
+    card_vpos             = f'"{config.get("card_vertical_position", "center")}"'
+    card_halign           = f'"{config.get("card_horizontal_align", "center")}"'
+    font_family           = f'"{config.get("font_family", "System Default")}"'
+    font_size             = str(config.get("font_size", 18))
     show_info             = "true" if config.get("show_info_by_default", False)     else "false"
     click_rev             = "true" if config.get("enable_click_reveal", True)       else "false"
     center_mode           = "true" if config.get("center_mode", True)               else "false"
@@ -36,11 +42,10 @@ def get_payload_and_resources(card=None):
     cloze_hidden_color    = f'"{config.get("cloze_hidden_color", "#0284c7")}"'
     active_cloze_idx      = str(card.ord + 1) if card is not None else "0"
     shortcut_roll         = f'"{config.get("shortcut_roll", "Space")}"'
-    shortcut_info         = f'"{config.get("shortcut_info", "I")}"'
+    shortcut_reveal_all   = f'"{config.get("shortcut_reveal_all", "Shift + Space")}"'
+    shortcut_info         = f'"{config.get("shortcut_info", "H")}"'
+    shortcut_image        = f'"{config.get("shortcut_image", "G")}"'
 
-    # Generic input bindings, per action (e.g. "reveal" -> list of key /
-    # mouse_button / wheel bindings). Falls back to the shipped defaults
-    # (Mouse Wheel Down for "reveal") when nothing has been configured yet.
     input_bindings = config.get("input_bindings") or {}
     if not input_bindings:
         input_bindings = {
@@ -51,6 +56,11 @@ def get_payload_and_resources(card=None):
 
     payload_config = f"""
     window.MINIMAL_CLOZE_CONFIG = {{
+        controlsPosition: {controls_pos},
+        cardVerticalPosition: {card_vpos},
+        cardHorizontalAlign: {card_halign},
+        fontFamily: {font_family},
+        fontSize: {font_size},
         showInfoByDefault: {show_info},
         enableClickReveal: {click_rev},
         centerMode: {center_mode},
@@ -64,7 +74,9 @@ def get_payload_and_resources(card=None):
         clozeHiddenColor: {cloze_hidden_color},
         activeClozeIdx: {active_cloze_idx},
         shortcutRoll: {shortcut_roll},
+        shortcutRevealAll: {shortcut_reveal_all},
         shortcutInfo: {shortcut_info},
+        shortcutImage: {shortcut_image},
         actionBindings: {action_bindings_json}
     }};
     """
@@ -97,36 +109,29 @@ def enrich_html_clozes(html, matches, active_ord):
         repl, html)
 
 
-def _uses_our_template(output) -> bool:
-    """Return True when the rendered card HTML contains our container element.
-
-    Checking the rendered output (rather than the note-type name) means the
-    addon works regardless of what the user names their note type, and
-    correctly skips every built-in Anki template that does not include
-    .anki-card-container.
-    """
-    return ('anki-card-container' in output.question_text or
-            'anki-card-container' in output.answer_text)
-
-
-def _template_uses_our_container(card) -> bool:
-    """Return True when the card's question template source contains our container.
-
-    Used by the show-question / show-answer hooks where we only have the card
-    object, not the rendered output.
-    """
-    try:
-        tmpl = card.note().model()['tmpls'][card.ord]
-        return 'anki-card-container' in tmpl.get('qfmt', '')
-    except Exception:
+def _is_our_card(card) -> bool:
+    if not card:
         return False
+    try:
+        model = card.note().model()
+        if model.get('name') == "Sequential Cloze v1":
+            return True
+        for tmpl in model.get('tmpls', []):
+            if 'anki-card-container' in tmpl.get('qfmt', '') or 'anki-card-container' in tmpl.get('afmt', ''):
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def _uses_our_template(output, card=None) -> bool:
+    if 'anki-card-container' in output.question_text or 'anki-card-container' in output.answer_text:
+        return True
+    return _is_our_card(card)
 
 
 def on_card_will_render(output, card, kind) -> None:
-    # Skip any card whose template does not use our .anki-card-container layout.
-    # Replaces the old note-type-name check — works with any note type whose
-    # template includes our HTML structure, and is immune to renames.
-    if not _uses_our_template(output):
+    if not _uses_our_template(output, card):
         return
 
     note    = card.note()
@@ -149,43 +154,42 @@ def on_card_will_render(output, card, kind) -> None:
     active_ord = card.ord + 1
     enriched_q = enrich_html_clozes(output.question_text, matches, active_ord)
     enriched_a = enrich_html_clozes(output.answer_text,   matches, active_ord)
-    style_tag  = f"<style>{css_content}</style>"
-    script_tag = f"<script>{payload_config}\n{js_content}</script>"
-    output.question_text = enriched_q + style_tag + script_tag
-    output.answer_text   = enriched_a + style_tag + script_tag
+    
+    # Prepend config so window.MINIMAL_CLOZE_CONFIG is ready before any script runs.
+    # Also append a trigger script so setupClozeInteractions immediately executes with latest settings.
+    config_script = f"<script id=\"sq-desktop-config\">{payload_config}</script>"
+    trigger_script = (
+        "<script>"
+        "if (typeof window.setupClozeInteractions === 'function') { window.setupClozeInteractions(); }"
+        "setTimeout(function() { if (typeof window.setupClozeInteractions === 'function') { window.setupClozeInteractions(); } }, 40);"
+        "</script>"
+    )
 
-
-def on_webview_will_set_content(web_content, context) -> None:
-    """Pre-define all JS functions in the reviewer / previewer webview head.
-
-    The card's own <script> tag (injected by on_card_will_render) also defines
-    these functions, but it executes asynchronously after the card HTML is
-    injected into the webview.  Without this head injection there is a race
-    condition: on_reviewer_did_show_question fires its web.eval() call before
-    the card scripts have had a chance to run, the typeof check returns false,
-    and setupClozeInteractions() is never called — causing centering and scroll
-    reveal to silently fail on every card.
-
-    Scoped to reviewer and previewer only; browser / editor are excluded to
-    prevent CSS bleeding into those panes.
-    """
-    class_name = context.__class__.__name__.lower()
-    if "reviewer" not in class_name and "previewer" not in class_name:
-        return
-    css_content, js_content, payload_config = get_payload_and_resources()
-    web_content.head += f"<style>{css_content}</style>"
-    web_content.head += f"<script>{payload_config}\n{js_content}</script>"
+    if "setupClozeInteractions" in output.question_text or "setupClozeInteractions" in output.answer_text:
+        # Template is self-contained: inject user configuration and execution trigger
+        output.question_text = config_script + enriched_q + trigger_script
+        output.answer_text   = config_script + enriched_a + trigger_script
+    else:
+        # Legacy template fallback without embedded scripts
+        style_tag  = f"<style>{css_content}</style>"
+        script_tag = f"<script>{payload_config}\n{js_content}\nif (typeof window.setupClozeInteractions === 'function') {{ window.setupClozeInteractions(); }}</script>"
+        output.question_text = enriched_q + style_tag + script_tag
+        output.answer_text   = enriched_a + style_tag + script_tag
 
 
 def on_reviewer_did_show_question(*args, **kwargs) -> None:
     try:
         if not (mw.reviewer and mw.reviewer.web and mw.reviewer.card):
             return
-        # Only call setup for cards that actually use our template, to avoid
-        # the 10 × 50 ms retry overhead on every non-Sequential card.
-        if not _template_uses_our_container(mw.reviewer.card):
+        if not _is_our_card(mw.reviewer.card):
+            mw.reviewer.web.eval(
+                "if (typeof window.teardownClozeInteractions === 'function') { "
+                "window.teardownClozeInteractions(); }"
+            )
             return
+        _, _, payload_config = get_payload_and_resources(mw.reviewer.card)
         mw.reviewer.web.eval(
+            f"{payload_config}\n"
             "if (typeof window.setupClozeInteractions === 'function') "
             "{ window.setupClozeInteractions(); }"
         )
@@ -197,9 +201,15 @@ def on_reviewer_did_show_answer(*args, **kwargs) -> None:
     try:
         if not (mw.reviewer and mw.reviewer.web and mw.reviewer.card):
             return
-        if not _template_uses_our_container(mw.reviewer.card):
+        if not _is_our_card(mw.reviewer.card):
+            mw.reviewer.web.eval(
+                "if (typeof window.teardownClozeInteractions === 'function') { "
+                "window.teardownClozeInteractions(); }"
+            )
             return
+        _, _, payload_config = get_payload_and_resources(mw.reviewer.card)
         mw.reviewer.web.eval(
+            f"{payload_config}\n"
             "if (typeof window.setupClozeInteractions === 'function') "
             "{ window.setupClozeInteractions(); }"
         )
@@ -207,7 +217,16 @@ def on_reviewer_did_show_answer(*args, **kwargs) -> None:
         pass
 
 
-# ── Hook registration ──────────────────────────────────────────────────────────
+def on_reviewer_will_end() -> None:
+    try:
+        if mw.reviewer and mw.reviewer.web:
+            mw.reviewer.web.eval(
+                "if (typeof window.teardownClozeInteractions === 'function') { "
+                "window.teardownClozeInteractions(); }"
+            )
+    except Exception:
+        pass
+
 
 try:
     gui_hooks.card_will_render.append(on_card_will_render)
@@ -219,10 +238,8 @@ except Exception:
         pass
 
 try:
-    # webview_will_set_content pre-defines the JS in the reviewer head so it is
-    # guaranteed to be available when the show-question hook calls web.eval().
-    gui_hooks.webview_will_set_content.append(on_webview_will_set_content)
     gui_hooks.reviewer_did_show_question.append(on_reviewer_did_show_question)
     gui_hooks.reviewer_did_show_answer.append(on_reviewer_did_show_answer)
+    gui_hooks.reviewer_will_end.append(on_reviewer_will_end)
 except Exception:
     pass

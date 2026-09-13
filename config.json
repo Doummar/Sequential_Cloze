@@ -1,4 +1,9 @@
 {
+  "controls_position": "top-right",
+  "card_vertical_position": "center",
+  "card_horizontal_align": "center",
+  "font_family": "System Default",
+  "font_size": 18,
   "center_mode": true,
   "mitcent_mode": true,
   "reveal_speed": 120,
@@ -10,9 +15,10 @@
   "cloze_revealed_color": "#c00000",
   "cloze_hidden_custom": false,
   "cloze_hidden_color": "#0284c7",
-  "mouse_scroll_reveal": false,
-  "shortcut_info": "I",
   "shortcut_roll": "Space",
+  "shortcut_reveal_all": "Shift + Space",
+  "shortcut_info": "H",
+  "shortcut_image": "G",
   "auto_theme_mode": true,
   "input_bindings": {
     "reveal": [

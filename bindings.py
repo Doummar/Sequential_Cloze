@@ -1,25 +1,15 @@
 # Generic input-binding system
-#
-# Provides a reusable framework for mapping keyboard keys and mouse input
-# (buttons + wheel) onto abstract "actions". Bindings are stored in the
-# add-on config as a plain list of {"type": ..., "value": ...} dicts per
-# action, so the same system can serve today's "Reveal" action as well as
-# future actions (Reveal Previous, Reveal All, Reset Reveal) without any
-# changes to the storage format, capture dialog, or matching logic — new
-# actions only need a new key in ACTIONS / DEFAULT_BINDINGS.
 
 from aqt.qt import *
-
+try:
+    from PyQt6.QtGui import QFont
+except ImportError:
+    try:
+        from PyQt5.QtGui import QFont
+    except ImportError:
+        pass
 import unicodedata
 
-
-# ---------------------------------------------------------------------------
-# Action registry
-# ---------------------------------------------------------------------------
-# Every bindable action is declared here. The settings UI currently only
-# exposes "reveal", but the other actions are already fully supported by
-# the storage format and capture dialog below — wiring them up in the
-# reviewer JS later is a matter of adding logic, not a new binding system.
 ACTIONS = {
     "reveal":          "Reveal",
     "reveal_previous": "Reveal Previous",
@@ -27,18 +17,9 @@ ACTIONS = {
     "reset_reveal":    "Reset Reveal",
 }
 
-# Bindings shipped for a brand-new install and restored on "Reset to
-# Default". Mouse Wheel Down is kept as the default trigger for "Reveal"
-# for backwards compatibility with the old single-purpose "Mouse Scroll
-# Reveal" checkbox it replaces.
 DEFAULT_BINDINGS = {
     "reveal": [{"type": "wheel", "value": "down"}],
 }
-
-
-# ---------------------------------------------------------------------------
-# Mouse buttons
-# ---------------------------------------------------------------------------
 
 MOUSE_BUTTON_NAMES = {
     Qt.MouseButton.LeftButton:    "left",
@@ -55,15 +36,6 @@ MOUSE_BUTTON_LABELS = {
     "back":    "Mouse Back Button",
     "forward": "Mouse Forward Button",
 }
-
-
-# ---------------------------------------------------------------------------
-# Keyboard keys
-# ---------------------------------------------------------------------------
-# Canonical key names. These are mirrored (by name, not by Qt value) in
-# js/cloze.js's keyEventToBindingString(), so a binding captured here in
-# the Qt settings dialog matches the string built from a browser
-# KeyboardEvent inside the reviewer webview.
 
 _QT_KEY_NAMES = {
     Qt.Key.Key_Space:     "Space",
@@ -85,33 +57,21 @@ _QT_KEY_NAMES = {
 for _i in range(1, 13):
     _QT_KEY_NAMES[getattr(Qt.Key, f"Key_F{_i}")] = f"F{_i}"
 
-# Qt.Key values line up with ASCII for printable characters (letters,
-# digits, punctuation), so anything not in the table above falls back to
-# chr(key) rather than needing an exhaustive mapping.
 _IGNORED_KEYS = {
     Qt.Key.Key_Control, Qt.Key.Key_Alt,
     Qt.Key.Key_Shift, Qt.Key.Key_Meta,
 }
 
-
 def qt_key_to_binding_name(key: int) -> str:
-    """Convert a Qt.Key value into the canonical string used in bindings."""
     if key in _QT_KEY_NAMES:
         return _QT_KEY_NAMES[key]
     if 0x20 <= key <= 0x7e:
         return chr(key).upper()
     text = QKeySequence(key).toString()
     name = text if text else f"Key_{key}"
-    # Qt can hand back accented/composed characters (e.g. "Å") in either
-    # Unicode normalization form depending on platform and input method.
-    # Normalize to NFC so it reliably matches the string the reviewer
-    # webview's KeyboardEvent produces for the same key (see
-    # js/cloze.js:normalizeKeyString).
     return unicodedata.normalize("NFC", name)
 
-
 def format_key_binding(key_name: str, modifiers) -> str:
-    """Build the final "Ctrl+Shift+K" style binding string."""
     parts = []
     if modifiers & Qt.KeyboardModifier.ControlModifier:
         parts.append("Ctrl")
@@ -124,11 +84,6 @@ def format_key_binding(key_name: str, modifiers) -> str:
     parts.append(key_name)
     return "+".join(parts)
 
-
-# ---------------------------------------------------------------------------
-# Binding <-> human-readable label
-# ---------------------------------------------------------------------------
-
 def describe_binding(binding: dict) -> str:
     b_type = binding.get("type")
     value = binding.get("value", "")
@@ -140,11 +95,6 @@ def describe_binding(binding: dict) -> str:
         return "Mouse Wheel Up" if value == "up" else "Mouse Wheel Down"
     return "Unknown binding"
 
-
-# ---------------------------------------------------------------------------
-# Config helpers
-# ---------------------------------------------------------------------------
-
 def get_bindings(config: dict, action: str) -> list:
     bindings_cfg = config.get("input_bindings") or {}
     stored = bindings_cfg.get(action)
@@ -152,38 +102,21 @@ def get_bindings(config: dict, action: str) -> list:
         stored = DEFAULT_BINDINGS.get(action, [])
     return [dict(b) for b in stored]
 
-
 def set_bindings(config: dict, action: str, binding_list: list) -> None:
     bindings_cfg = config.setdefault("input_bindings", {})
     bindings_cfg[action] = [dict(b) for b in binding_list]
 
-
 def migrate_legacy_config(config: dict) -> dict:
-    """One-time migration from the old single-purpose "Mouse Scroll Reveal"
-    checkbox onto the generic input-binding system. Idempotent — a no-op
-    once "input_bindings" already exists in the config.
-    """
     if "input_bindings" in config:
         return config
     if config.get("mouse_scroll_reveal", False):
         reveal_bindings = [dict(b) for b in DEFAULT_BINDINGS["reveal"]]
     else:
-        # User had explicitly turned the old checkbox off — respect that
-        # choice rather than silently re-enabling wheel-down for them.
         reveal_bindings = []
     config["input_bindings"] = {"reveal": reveal_bindings}
     return config
 
-
-# ---------------------------------------------------------------------------
-# "Press any key or mouse button" capture dialog
-# ---------------------------------------------------------------------------
-
 class BindingCaptureDialog(QDialog):
-    """Modal dialog that captures the next key press, mouse button click,
-    or wheel scroll and exposes it as a binding dict via .result_binding.
-    """
-
     def __init__(self, parent=None, theme_qss: str = ""):
         super().__init__(parent)
         self.setWindowTitle("Set Binding")
@@ -199,21 +132,26 @@ class BindingCaptureDialog(QDialog):
 
         label = QLabel("Press any key or mouse button…")
         label.setWordWrap(True)
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        f = QFont()
-        f.setPointSize(12)
-        f.setBold(True)
-        label.setFont(f)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter if hasattr(Qt, 'AlignmentFlag') else Qt.AlignCenter)
+        try:
+            f = QFont()
+            f.setPointSize(12)
+            f.setBold(True)
+            label.setFont(f)
+        except Exception:
+            pass
+        label.setStyleSheet("font-size: 14px; font-weight: bold;")
         layout.addWidget(label)
 
         hint = QLabel(
             "Scroll the mouse wheel, click a mouse button,\n"
             "or press a keyboard key. Press Esc to cancel.")
         hint.setWordWrap(True)
-        hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hint.setAlignment(Qt.AlignmentFlag.AlignCenter if hasattr(Qt, 'AlignmentFlag') else Qt.AlignCenter)
         layout.addWidget(hint)
 
         cancel_btn = QPushButton("Cancel")
+        cancel_btn.setFixedHeight(22)
         cancel_btn.clicked.connect(self.reject)
         layout.addWidget(cancel_btn)
 
@@ -226,7 +164,7 @@ class BindingCaptureDialog(QDialog):
             self.reject()
             return
         if key in _IGNORED_KEYS:
-            return  # wait for a real, non-modifier key
+            return
         name = qt_key_to_binding_name(key)
         value = format_key_binding(name, event.modifiers())
         self.result_binding = {"type": "key", "value": value}
@@ -246,25 +184,13 @@ class BindingCaptureDialog(QDialog):
         self.result_binding = {"type": "wheel", "value": value}
         self.accept()
 
-
 def capture_binding(parent=None, theme_qss: str = ""):
-    """Show the capture dialog; return a binding dict, or None if cancelled."""
     dlg = BindingCaptureDialog(parent, theme_qss)
     if dlg.exec() == QDialog.DialogCode.Accepted:
         return dlg.result_binding
     return None
 
-
-# ---------------------------------------------------------------------------
-# Reusable "bindings for one action" list widget
-# ---------------------------------------------------------------------------
-
 class BindingListWidget(QWidget):
-    """Shows the current bindings for a single action as a list, with
-    controls to add a new one (via the capture dialog) or remove the
-    selected one. Any action name from ACTIONS can be managed this way.
-    """
-
     def __init__(self, binding_list: list, parent=None, theme_qss: str = ""):
         super().__init__(parent)
         self._bindings = [dict(b) for b in binding_list]
@@ -279,12 +205,16 @@ class BindingListWidget(QWidget):
         layout.addWidget(self.list_widget)
 
         btn_row = QHBoxLayout()
+        btn_row.setSpacing(6)
         self.add_btn = QPushButton("+ Add Binding")
+        self.add_btn.setFixedHeight(22)
         self.add_btn.clicked.connect(self._on_add)
         self.remove_btn = QPushButton("Remove Selected")
+        self.remove_btn.setFixedHeight(22)
         self.remove_btn.clicked.connect(self._on_remove)
         btn_row.addWidget(self.add_btn)
         btn_row.addWidget(self.remove_btn)
+        btn_row.addStretch()
         layout.addLayout(btn_row)
 
         self.setLayout(layout)
@@ -300,7 +230,7 @@ class BindingListWidget(QWidget):
         if binding is None:
             return
         if binding in self._bindings:
-            return  # already bound to this action, avoid exact duplicates
+            return
         self._bindings.append(binding)
         self._refresh()
 
@@ -313,3 +243,7 @@ class BindingListWidget(QWidget):
 
     def bindings(self) -> list:
         return [dict(b) for b in self._bindings]
+
+    def set_bindings(self, binding_list: list) -> None:
+        self._bindings = [dict(b) for b in binding_list]
+        self._refresh()

@@ -1,10 +1,5 @@
 {
-  "name": "Sequential Cloze Revealer",
   "package": "sequential_cloze_revealer",
-  "version": "1.0.0",
-  "description": "Minimalistic replacement for Enhanced Cloze that centers study content, hides passive clozes, and provides interactive click/shortcut reveals.",
-  "min_version": "25.0.0",
-  "max_version": "26.99.99",
-  "author": "Adel Aitah",
-  "homepage": "https://github.com/Doummar/Sequential_Cloze_Revealer"
+  "name": "Sequential Cloze Revealer",
+  "human_version": "1.0.1"
 }

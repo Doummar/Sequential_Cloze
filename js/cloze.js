@@ -1,40 +1,61 @@
-// Sequential Cloze Revealer - Reviewer Frontend Script
+// Sequential Cloze Revealer - Reviewer Frontend Script (with .ctrl + .ibtn system)
 
-// Explicitly bind functions to window/global scope for reliable access from python .eval()
+// Toggle Image: Injects content into #extra-area (Sentence Builder system)
+window.toggleCardImage = function(event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    const extraArea = document.getElementById("extra-area");
+    const rawImage = document.getElementById("raw-image");
+    const btn = document.getElementById("image-toggle-btn");
+    if (!extraArea || !rawImage) return;
+
+    const isCurrent = extraArea.getAttribute("data-mode") === "image";
+    if (isCurrent) {
+        extraArea.innerHTML = "";
+        extraArea.removeAttribute("data-mode");
+        if (btn) btn.classList.remove("active");
+    } else {
+        extraArea.innerHTML = rawImage.innerHTML;
+        extraArea.setAttribute("data-mode", "image");
+        if (btn) btn.classList.add("active");
+
+        const infoBtn = document.getElementById("info-toggle-btn");
+        if (infoBtn) infoBtn.classList.remove("active");
+    }
+};
+
+// Toggle Info: Injects content into #extra-area (Sentence Builder system)
 window.toggleInfo = function(event) {
     if (event) {
         event.stopPropagation();
         event.preventDefault();
     }
-    const info = document.getElementById("info-content");
-    if (info) {
-        info.classList.toggle("hidden");
+    const extraArea = document.getElementById("extra-area");
+    const rawInfo = document.getElementById("raw-info");
+    const btn = document.getElementById("info-toggle-btn");
+    if (!extraArea || !rawInfo) return;
+
+    const isCurrent = extraArea.getAttribute("data-mode") === "info";
+    if (isCurrent) {
+        extraArea.innerHTML = "";
+        extraArea.removeAttribute("data-mode");
+        if (btn) btn.classList.remove("active");
+    } else {
+        extraArea.innerHTML = '<div class="info-content">' + rawInfo.innerHTML + '</div>';
+        extraArea.setAttribute("data-mode", "info");
+        if (btn) btn.classList.add("active");
+
+        const imgBtn = document.getElementById("image-toggle-btn");
+        if (imgBtn) imgBtn.classList.remove("active");
     }
 };
 
 // ---------------------------------------------------------------------------
 // Generic input-binding system (runtime half)
-//
-// The Qt settings dialog (bindings.py) lets the user attach any mix of
-// keyboard keys, mouse buttons, and mouse-wheel directions to an "action"
-// name, stored in config.actionBindings as { actionName: [ {type, value} ] }.
-// Everything below is action-agnostic: it just figures out which action(s)
-// a given browser event maps to and calls window.performAction(name) — the
-// same call regardless of whether a key, a click, or a wheel scroll
-// triggered it. Adding a future action (Reveal Previous, Reveal All, Reset
-// Reveal) only means adding a branch inside performAction().
 // ---------------------------------------------------------------------------
 
-// Mirrors bindings.py's qt_key_to_binding_name()/format_key_binding() so a
-// binding captured in the Qt dialog matches what a KeyboardEvent produces.
-//
-// Note: for accented / non-ASCII keys (e.g. "Å" on a Nordic layout), Qt and
-// Chromium can report the *same visible character* using different Unicode
-// normalization forms (composed "NFC" vs decomposed "NFD" — a single "Å"
-// code point vs "A" + a separate combining ring). They look identical but
-// fail a strict "===" comparison, so both this function's output and the
-// stored binding value are normalized to NFC before ever being compared
-// (see bindingListMatches below).
 function keyEventToBindingString(e) {
     var parts = [];
     if (e.ctrlKey) parts.push("Ctrl");
@@ -62,14 +83,11 @@ function keyEventToBindingString(e) {
     return normalizeKeyString(parts.join("+"));
 }
 
-// Best-effort Unicode normalization; String.prototype.normalize isn't
-// available in every embedded engine, so degrade gracefully if missing.
 function normalizeKeyString(s) {
     if (typeof s !== "string") return s;
     return typeof s.normalize === "function" ? s.normalize("NFC") : s;
 }
 
-// Mirrors bindings.py's MOUSE_BUTTON_NAMES.
 function mouseButtonName(button) {
     switch (button) {
         case 0: return "left";
@@ -83,9 +101,6 @@ function mouseButtonName(button) {
 
 function bindingListMatches(bindingList, type, value) {
     if (!bindingList) return false;
-    // Normalize the incoming key value once; stored binding values are
-    // normalized per-entry below so this also self-heals bindings saved by
-    // an older build before this normalization fix existed.
     var normValue = type === "key" ? normalizeKeyString(value) : value;
     for (var i = 0; i < bindingList.length; i++) {
         var b = bindingList[i];
@@ -96,24 +111,110 @@ function bindingListMatches(bindingList, type, value) {
     return false;
 }
 
-// Single dispatch point for every bindable action. New actions plug in here.
+window.teardownClozeInteractions = function() {
+    if (window._sqKeyHandler) {
+        document.removeEventListener("keydown", window._sqKeyHandler, false);
+        window._sqKeyHandler = null;
+    }
+    if (window._sqWheelHandler) {
+        document.removeEventListener("wheel", window._sqWheelHandler, { passive: false });
+        window._sqWheelHandler = null;
+    }
+    if (window._sqMouseHandler) {
+        document.removeEventListener("mousedown", window._sqMouseHandler, false);
+        window._sqMouseHandler = null;
+    }
+    if (window._ibKeyHandler) {
+        document.removeEventListener("keydown", window._ibKeyHandler, true);
+        document.removeEventListener("keydown", window._ibKeyHandler, false);
+        window._ibKeyHandler = null;
+    }
+    if (window._ibWheelHandler) {
+        document.removeEventListener("wheel", window._ibWheelHandler, { passive: false });
+        document.removeEventListener("wheel", window._ibWheelHandler, false);
+        window._ibWheelHandler = null;
+    }
+    if (window._ibMouseHandler) {
+        document.removeEventListener("mousedown", window._ibMouseHandler, false);
+        window._ibMouseHandler = null;
+    }
+    if (document.onkeydown && document.onkeydown._isSequentialCloze) {
+        document.onkeydown = null;
+    }
+};
+
 window.performAction = function(action) {
     if (action === "reveal") {
         var hiddenCloze = document.querySelector(".cloze.active[data-state='hidden']");
         if (hiddenCloze) {
             window.revealCloze(hiddenCloze);
         }
-    } else if (action === "reveal_previous") {
-        // Reserved for a future update.
-    } else if (action === "reveal_all") {
-        // Reserved for a future update.
-    } else if (action === "reset_reveal") {
-        // Reserved for a future update.
     }
 };
 
+function isEditingField(el) {
+    if (!el) return false;
+    var tag = (el.tagName || "").toUpperCase();
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+    if (el.isContentEditable || el.getAttribute("contenteditable") === "true" || el.getAttribute("contenteditable") === "") return true;
+    if (typeof el.closest === "function") {
+        if (el.closest("input, textarea, select, [contenteditable='true'], [contenteditable=''], .type-ans, #typeans, form")) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function parseShortcut(str) {
+    if (!str || typeof str !== "string") return null;
+    var clean = str.toLowerCase().replace(/\s+/g, "");
+    var parts = clean.split("+").filter(Boolean);
+    if (parts.length === 0) return null;
+
+    var wantsCtrl = false;
+    var wantsAlt = false;
+    var wantsShift = false;
+    var wantsMeta = false;
+    var keyPart = "";
+
+    for (var i = 0; i < parts.length; i++) {
+        var p = parts[i];
+        if (p === "ctrl" || p === "control") wantsCtrl = true;
+        else if (p === "alt") wantsAlt = true;
+        else if (p === "shift") wantsShift = true;
+        else if (p === "meta" || p === "cmd" || p === "command" || p === "win") wantsMeta = true;
+        else keyPart = p;
+    }
+    return {
+        wantsCtrl: wantsCtrl,
+        wantsAlt: wantsAlt,
+        wantsShift: wantsShift,
+        wantsMeta: wantsMeta,
+        keyPart: keyPart
+    };
+}
+
+function eventMatchesShortcut(parsed, e) {
+    if (!parsed || !parsed.keyPart) return false;
+
+    if (!!e.ctrlKey !== parsed.wantsCtrl) return false;
+    if (!!e.altKey !== parsed.wantsAlt) return false;
+    if (!!e.shiftKey !== parsed.wantsShift) return false;
+    if (!!e.metaKey !== parsed.wantsMeta) return false;
+
+    var k = (e.key || "").toLowerCase();
+    var c = (e.code || "").toLowerCase();
+    var kp = parsed.keyPart;
+
+    if (kp === "space") {
+        return k === " " || k === "space" || c === "space";
+    }
+    return k === kp || c === ("key" + kp) || c === kp;
+}
+
 window.setupClozeInteractions = function() {
-    // Only apply interaction logic if the custom .anki-card-container is present
+    window.teardownClozeInteractions();
+
     const container = document.querySelector(".anki-card-container");
     if (!container) {
         if (!window._setupClozeRetryCount) window._setupClozeRetryCount = 0;
@@ -123,7 +224,7 @@ window.setupClozeInteractions = function() {
         }
         return;
     }
-    window._setupClozeRetryCount = 0; // reset
+    window._setupClozeRetryCount = 0;
     
     const config = window.MINIMAL_CLOZE_CONFIG || {
         showInfoByDefault: false,
@@ -139,85 +240,176 @@ window.setupClozeInteractions = function() {
         clozeHiddenColor: "#0284c7",
         activeClozeIdx: 1,
         shortcutRoll: "Space",
-        shortcutInfo: "I",
+        shortcutInfo: "H",
+        shortcutImage: "G",
         actionBindings: { reveal: [{ type: "wheel", value: "down" }] }
     };
 
-    // Normalise activeClozeIdx to a plain integer.
-    // Python injects it as a number literal (e.g. activeClozeIdx: 1) but the
-    // JS default above used a string, so parseInt() handles both forms safely.
     config.activeClozeIdx = parseInt(config.activeClozeIdx || 0, 10);
 
-    // Apply default styles or timing from configuration
-    document.documentElement.style.setProperty('--reveal-speed', config.revealSpeed + "ms");
+    // Apply reveal transition speed strictly to card container
+    container.style.setProperty('--reveal-speed', (config.revealSpeed || 120) + "ms");
     
     if (config.clozeRevealedCustom && config.clozeRevealedColor) {
-        document.documentElement.style.setProperty('--cloze-revealed-color', config.clozeRevealedColor);
+        container.style.setProperty('--cloze-revealed-color', config.clozeRevealedColor);
     } else {
-        document.documentElement.style.setProperty('--cloze-revealed-color', 'inherit');
+        container.style.setProperty('--cloze-revealed-color', 'inherit');
     }
     
     if (config.clozeHiddenCustom && config.clozeHiddenColor) {
-        document.documentElement.style.setProperty('--cloze-hidden-color', config.clozeHiddenColor);
+        container.style.setProperty('--cloze-hidden-color', config.clozeHiddenColor);
     } else {
-        document.documentElement.style.setProperty('--cloze-hidden-color', 'inherit');
+        container.style.setProperty('--cloze-hidden-color', 'inherit');
+    }
+
+    // Apply font family and font size strictly to card container
+    var fontFamilies = {
+        "System Default": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+        "Arial": "Arial, Helvetica, sans-serif",
+        "Georgia": "Georgia, Cambria, 'Times New Roman', Times, serif",
+        "Times New Roman": "'Times New Roman', Times, Georgia, serif",
+        "Courier New": "'Courier New', Courier, monospace",
+        "Segoe UI": "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+        "SF Pro": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', sans-serif",
+        "Comic Sans MS": "'Comic Sans MS', 'Comic Sans', cursive, sans-serif"
+    };
+
+    var chosenFont = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+    if (config.fontFamily && fontFamilies[config.fontFamily]) {
+        chosenFont = fontFamilies[config.fontFamily];
+    } else if (config.fontFamily && config.fontFamily !== "System Default") {
+        chosenFont = (config.fontFamily.indexOf(' ') !== -1 && config.fontFamily.indexOf('"') === -1)
+            ? '"' + config.fontFamily + '", sans-serif'
+            : config.fontFamily;
+    }
+    container.style.setProperty('--card-font-family', chosenFont);
+    container.style.fontFamily = chosenFont;
+
+    var chosenFontSize = (config.fontSize ? config.fontSize : 18) + "px";
+    container.style.setProperty('--card-font-size', chosenFontSize);
+    container.style.fontSize = chosenFontSize;
+
+    var frontEl = container.querySelector(".minimal-front");
+    if (frontEl) {
+        frontEl.style.fontFamily = chosenFont;
+        frontEl.style.fontSize = chosenFontSize;
+    }
+    var backEl = container.querySelector(".minimal-back");
+    if (backEl) {
+        backEl.style.fontFamily = chosenFont;
+        backEl.style.fontSize = chosenFontSize;
     }
     
-    // Detect back card early — used by both applyCentering and cloze setup below
     const isBackCard = document.getElementById("answer-splitter") !== null ||
                        document.querySelector(".minimal-back") !== null;
 
-    // Dynamically apply Center / Left layout
+    // Apply layout and positioning modes strictly to .anki-card-container
     const applyCentering = function() {
-        // Neutralise Anki's own body-level flex centering so it doesn't
-        // compound with our container centering and cause a position shift.
-        if (document.body) {
-            document.body.style.justifyContent = "flex-start";
-            document.body.style.alignItems    = "stretch";
-        }
-        const containers = [
-            document.body,
-            document.querySelector(".card"),
-            document.querySelector(".anki-card-container")
-        ];
-        containers.forEach(function(el) {
-            if (el) {
-                if (config.mitcentMode) {
-                    el.classList.add("center-mode", "mitcent-mode");
-                    el.classList.remove("left-mode");
-                } else if (config.centerMode) {
-                    el.classList.add("center-mode");
-                    el.classList.remove("left-mode", "mitcent-mode");
-                } else {
-                    el.classList.add("left-mode");
-                    el.classList.remove("center-mode", "mitcent-mode");
-                }
+        const cardContainer = document.querySelector(".anki-card-container");
+        if (!cardContainer) return;
+
+        // 1. Controls Position (.ctrl bar: Audio + Image + Info)
+        const ctrlEl = cardContainer.querySelector(".ctrl");
+        if (ctrlEl) {
+            ctrlEl.classList.remove(
+                "pos-top-right", "pos-top-left", "pos-bottom-right", "pos-bottom-left",
+                "ctrl-top-right", "ctrl-top-left", "ctrl-bottom-right", "ctrl-bottom-left"
+            );
+            const cpos = config.controlsPosition || "top-right";
+            ctrlEl.classList.add("pos-" + cpos);
+
+            // Platform Detection: Desktop / AnkiMobile / AnkiDroid vs AnkiWeb
+            const isAnkiWeb = (function() {
+                try {
+                    const host = (window.location && window.location.hostname) ? window.location.hostname.toLowerCase() : "";
+                    const href = (window.location && window.location.href) ? window.location.href.toLowerCase() : "";
+                    if (host.indexOf("ankiweb") !== -1 || host.indexOf("ankiuser") !== -1 || href.indexOf("ankiweb") !== -1 || href.indexOf("ankiuser") !== -1) {
+                        return true;
+                    }
+                } catch (e) {}
+                return false;
+            })();
+
+            if (isAnkiWeb) {
+                cardContainer.classList.add("is-ankiweb");
+            } else {
+                cardContainer.classList.remove("is-ankiweb");
             }
-        });
+
+            // Clear any manual inline styles so CSS classes have full control
+            ctrlEl.style.position = "";
+            ctrlEl.style.top = "";
+            ctrlEl.style.right = "";
+            ctrlEl.style.bottom = "";
+            ctrlEl.style.left = "";
+            ctrlEl.style.alignItems = "";
+        }
+
+        // 2. Card Position Settings (Vertical & Horizontal)
+        const vpos = config.cardVerticalPosition || (config.mitcentMode ? "center" : (config.centerMode ? "center" : "top"));
+        const halign = config.cardHorizontalAlign || (config.centerMode ? "center" : "left");
+
+        cardContainer.classList.remove(
+            "vpos-top", "vpos-center", "vpos-bottom",
+            "halign-left", "halign-center", "halign-right",
+            "center-mode", "mitcent-mode", "left-mode"
+        );
+        cardContainer.classList.add("vpos-" + vpos, "halign-" + halign);
+        cardContainer.setAttribute("data-vpos", vpos);
+        cardContainer.setAttribute("data-halign", halign);
+
+        // Backwards-compatible support for legacy styles
+        if (halign === "center" && vpos === "center") {
+            cardContainer.classList.add("center-mode", "mitcent-mode");
+        } else if (halign === "center") {
+            cardContainer.classList.add("center-mode");
+        } else if (halign === "left") {
+            cardContainer.classList.add("left-mode");
+        }
+
+        // Clear inline styles so CSS classes handle sizing & alignment cleanly
+        cardContainer.style.alignItems = "";
+        cardContainer.style.textAlign = "";
+        cardContainer.style.justifyContent = "";
+        cardContainer.style.minHeight = "";
+        cardContainer.style.marginTop = "";
+        cardContainer.style.marginBottom = "";
+        cardContainer.style.marginLeft = "";
+        cardContainer.style.marginRight = "";
+        cardContainer.style.maxWidth = "";
+        cardContainer.style.width = "";
+        cardContainer.style.paddingTop = "";
+        cardContainer.style.paddingBottom = "";
+        cardContainer.style.paddingLeft = "";
+        cardContainer.style.paddingRight = "";
     };
     applyCentering();
     setTimeout(applyCentering, 0);
     setTimeout(applyCentering, 100);
 
-    // Initial info field visibility state
-    const infoContent = document.getElementById("info-content");
-    if (infoContent) {
+    // Extra area initial state (Sentence Builder system)
+    const extraArea = document.getElementById("extra-area");
+    const infoBtn = document.getElementById("info-toggle-btn");
+    const imgBtn = document.getElementById("image-toggle-btn");
+    if (extraArea) {
+        extraArea.innerHTML = "";
+        extraArea.removeAttribute("data-mode");
+        if (infoBtn) infoBtn.classList.remove("active");
+        if (imgBtn) imgBtn.classList.remove("active");
+
         if (config.showInfoByDefault) {
-            infoContent.classList.remove("hidden");
-        } else {
-            infoContent.classList.add("hidden");
+            window.toggleInfo();
         }
     }
-    
+
     const rawEl = document.getElementById("raw-front");
     const frontContentEl = document.querySelector(".minimal-front");
     
-    // Multi-platform enrichment: Parse raw Front if available and not yet marked
+    // Multi-platform enrichment: Parse raw Front if available
     if (rawEl && frontContentEl && !frontContentEl.hasAttribute("data-interactive-rendered")) {
         frontContentEl.setAttribute("data-interactive-rendered", "true");
         let rawText = rawEl.innerHTML || rawEl.textContent || "";
         
-        // Find raw clozes to determine active index
         const clozPattern = /\{\{c(\d+)::(.*?)\}\}/gi;
         const rawClozes = [];
         let match;
@@ -234,10 +426,8 @@ window.setupClozeInteractions = function() {
             rawClozes.push({ num: clNum, answer: answer.trim(), hint: hint.trim() });
         }
         
-        // Detect active cloze index
         let activeIdx = 1;
         if (config.activeClozeIdx) {
-            // Already normalised to a number by the parseInt() call above
             activeIdx = config.activeClozeIdx;
         } else {
             const nativeClozeSpan = frontContentEl.querySelector(".cloze");
@@ -263,7 +453,6 @@ window.setupClozeInteractions = function() {
             }
         }
         
-        // Rebuild HTML with interactive span elements
         const enrichedHtml = rawText.replace(/\{\{c(\d+)::(.*?)\}\}/gi, function(match, clNumStr, content) {
             const clNum = parseInt(clNumStr, 10);
             const parts = content.split("::");
@@ -293,7 +482,7 @@ window.setupClozeInteractions = function() {
         frontContentEl.innerHTML = enrichedHtml;
     }
     
-    // Select all clozes (native or reconstructed)
+    // Select all clozes
     const clozes = document.querySelectorAll(".cloze");
     
     clozes.forEach(function(cloze) {
@@ -303,8 +492,6 @@ window.setupClozeInteractions = function() {
         const clozeIdxAttr = cloze.getAttribute("data-cloze-idx");
         let isActive = false;
         if (clozeIdxAttr && config.activeClozeIdx) {
-            // clozeIdxAttr is always a string from getAttribute(); config value
-            // is a number — parse the attribute so === strict equality works.
             isActive = (parseInt(clozeIdxAttr, 10) === config.activeClozeIdx);
         } else {
             isActive = isBlank || cloze.classList.contains("active");
@@ -324,26 +511,40 @@ window.setupClozeInteractions = function() {
                 if (!cloze.getAttribute("data-original-text")) {
                     cloze.setAttribute("data-original-text", hint ? "[" + hint + "]" : "[...]");
                 }
+                if (config.clozeRevealedCustom && config.clozeRevealedColor) {
+                    cloze.style.color = config.clozeRevealedColor;
+                }
             } else {
                 cloze.setAttribute("data-state", "hidden");
                 if (!cloze.getAttribute("data-original-text")) {
                     cloze.setAttribute("data-original-text", cloze.innerHTML);
+                }
+                if (config.clozeHiddenCustom && config.clozeHiddenColor) {
+                    cloze.style.color = config.clozeHiddenColor;
                 }
             }
         } else {
             cloze.classList.add("passive");
             cloze.classList.remove("active");
             cloze.setAttribute("data-state", "revealed");
+            cloze.style.color = "";
         }
         
-        // Setup click/touchend handlers
         if (config.enableClickReveal) {
             if (!cloze.hasAttribute("data-has-listener")) {
                 cloze.setAttribute("data-has-listener", "true");
                 
+                var lastTouchTime = 0;
                 const handleInteract = function(e) {
+                    if (e.type === "touchend") {
+                        lastTouchTime = Date.now();
+                    } else if (e.type === "click") {
+                        if (Date.now() - lastTouchTime < 450) {
+                            return; // Suppress simulated ghost click following touchend on mobile
+                        }
+                    }
                     e.stopPropagation();
-                    e.preventDefault(); // Critically prevent card flipping on click
+                    e.preventDefault();
                     
                     if (cloze.classList.contains("active")) {
                         if (cloze.getAttribute("data-state") === "hidden") {
@@ -372,138 +573,188 @@ window.setupClozeInteractions = function() {
     
     window.updateClozeSequencing();
     
-    // Set up Keyboard Shortcuts
-    document.onkeydown = function(e) {
-        // Isolation guard: this handler persists in the webview across card
-        // changes. Do nothing when our card type is no longer in the DOM.
-        if (!document.querySelector(".anki-card-container")) return;
-
-        const rollKey = (config.shortcutRoll || "Space").toLowerCase();
-        const infoKey = (config.shortcutInfo || "I").toLowerCase();
-
-        // Helper: does this event match a configured key string?
-        const keyMatchesRoll = rollKey === "space"
-            ? (e.code === "Space" || e.key === " ")
-            : e.key.toLowerCase() === rollKey;
-
-        // Shift+Roll: reveal ALL hidden active clozes at once.
-        // MUST be checked before plain Roll so Shift+Space is not swallowed first.
-        if (keyMatchesRoll && e.shiftKey) {
-            e.preventDefault();
-            const activeClozes = document.querySelectorAll(".cloze.active[data-state='hidden']");
-            activeClozes.forEach(function(c) { window.revealCloze(c); });
+    // -----------------------------------------------------------------------
+    // Production-Grade Keyboard & Input Handling
+    // -----------------------------------------------------------------------
+    window._sqKeyHandler = function(e) {
+        // 1. Only handle keys during review of Sequential Cloze cards
+        var currentContainer = document.querySelector(".anki-card-container");
+        if (!currentContainer) {
+            window.teardownClozeInteractions();
             return;
         }
 
-        // Roll: reveal next hidden cloze, or flip card when none remain
-        if (keyMatchesRoll) {
-            const hiddenCloze = document.querySelector(".cloze.active[data-state='hidden']");
+        // 2. Never block typing in input, textarea, select, contenteditable, or form fields
+        if (isEditingField(e.target) || isEditingField(document.activeElement)) {
+            return;
+        }
+
+        var rollShortcut = config.shortcutRoll || "Space";
+        var revealAllShortcut = config.shortcutRevealAll || "Shift + Space";
+        var infoShortcut = config.shortcutInfo || "H";
+        var imgShortcut = config.shortcutImage || "G";
+
+        var parsedRevealAll = parseShortcut(revealAllShortcut);
+        var parsedRoll = parseShortcut(rollShortcut);
+        var parsedInfo = parseShortcut(infoShortcut);
+        var parsedImage = parseShortcut(imgShortcut);
+
+        // 3. Reveal All Clozes (Default: Shift + Space)
+        if (eventMatchesShortcut(parsedRevealAll, e)) {
+            var activeHiddenClozes = currentContainer.querySelectorAll(".cloze.active[data-state='hidden']");
+            if (activeHiddenClozes && activeHiddenClozes.length > 0) {
+                e.preventDefault();
+                activeHiddenClozes.forEach(function(c) {
+                    window.revealCloze(c);
+                });
+                return;
+            }
+            // No hidden clozes remain; allow natural event flow
+            return;
+        }
+
+        // 4. Roll / Next Cloze (Default: Space)
+        // Space / Enter special care:
+        // Only use Space for "next cloze" while there are still hidden clozes.
+        // When all clozes are revealed, allow normal Anki behavior (flip / answer) to work!
+        if (eventMatchesShortcut(parsedRoll, e)) {
+            var hiddenCloze = currentContainer.querySelector(".cloze.active[data-state='hidden']");
             if (hiddenCloze) {
                 e.preventDefault();
                 window.revealCloze(hiddenCloze);
                 return;
             }
-            if (window.pycmd) {
-                window.pycmd("ans");
+            // All clozes revealed or not on question: do NOT preventDefault or trigger pycmd!
+            // Let Anki's native reviewer handle Space to flip or grade.
+            return;
+        }
+
+        // 5. Info toggle shortcut (Default: H)
+        if (eventMatchesShortcut(parsedInfo, e)) {
+            var rawInfo = document.getElementById("raw-info");
+            var infoBtn = document.getElementById("info-toggle-btn");
+            if (infoBtn || (rawInfo && rawInfo.innerHTML.trim())) {
+                e.preventDefault();
+                window.toggleInfo();
+                return;
+            }
+            return;
+        }
+
+        // 6. Image toggle shortcut (Default: G)
+        if (eventMatchesShortcut(parsedImage, e)) {
+            var rawImg = document.getElementById("raw-image");
+            var imgBtn = document.getElementById("image-toggle-btn");
+            if (imgBtn || (rawImg && rawImg.innerHTML.trim())) {
+                e.preventDefault();
+                window.toggleCardImage();
+                return;
+            }
+            return;
+        }
+
+        // 7. Custom input bindings (if configured for keys)
+        var actionBindings = config.actionBindings || {};
+        for (var action in actionBindings) {
+            var bList = actionBindings[action];
+            if (!bList || !bList.length) continue;
+            for (var bIdx = 0; bIdx < bList.length; bIdx++) {
+                var b = bList[bIdx];
+                if (b && b.type === "key" && b.value) {
+                    var parsedBinding = parseShortcut(b.value);
+                    if (eventMatchesShortcut(parsedBinding, e)) {
+                        if (action === "reveal") {
+                            var nextHidden = currentContainer.querySelector(".cloze.active[data-state='hidden']");
+                            if (nextHidden) {
+                                e.preventDefault();
+                                window.revealCloze(nextHidden);
+                                return;
+                            }
+                            return;
+                        } else {
+                            e.preventDefault();
+                            window.performAction(action);
+                            return;
+                        }
+                    }
+                }
             }
         }
 
-        if (e.key.toLowerCase() === "a") {
-            e.preventDefault();
-            if (window.pycmd) {
-                window.pycmd("ans");
-            }
-        }
-
-        // Info toggle shortcut
-        if (e.key.toLowerCase() === infoKey) {
-            e.preventDefault();
-            window.toggleInfo();
-        }
+        // 8. If the key does not belong to this add-on, do nothing and let it propagate!
     };
 
-    // Generic input bindings (keyboard / mouse button / mouse wheel), wired
-    // up to whatever actions are configured in config.actionBindings.
-    // Always remove any previous listeners first — they're attached to
-    // `document`, which persists across card navigations in Anki's webview,
-    // so without explicit cleanup they'd accumulate and fire on every card
-    // type after the user has seen at least one Sequential card.
-    if (window._ibKeyHandler) {
-        document.removeEventListener("keydown", window._ibKeyHandler, true);
-        window._ibKeyHandler = null;
-    }
-    if (window._ibMouseHandler) {
-        document.removeEventListener("mousedown", window._ibMouseHandler);
-        window._ibMouseHandler = null;
-    }
-    if (window._ibWheelHandler) {
-        document.removeEventListener("wheel", window._ibWheelHandler);
-        window._ibWheelHandler = null;
-    }
+    document.addEventListener("keydown", window._sqKeyHandler, false);
 
+    // Optional mouse / wheel bindings (only attached if configured)
     var actionBindings = config.actionBindings || {};
-
-    // Isolation guard: if the user has navigated to a different card type,
-    // our container is gone — detach every listener and bail.
-    var _ibAlive = function() {
-        if (document.querySelector(".anki-card-container")) return true;
-        if (window._ibKeyHandler) document.removeEventListener("keydown", window._ibKeyHandler, true);
-        if (window._ibMouseHandler) document.removeEventListener("mousedown", window._ibMouseHandler);
-        if (window._ibWheelHandler) document.removeEventListener("wheel", window._ibWheelHandler);
-        window._ibKeyHandler = window._ibMouseHandler = window._ibWheelHandler = null;
-        return false;
-    };
-
-    // Fires performAction() for every action bound to this (type, value)
-    // input — the same reveal logic runs whether a key, a click, or a wheel
-    // scroll triggered it.
-    var _ibDispatch = function(type, value) {
-        for (var action in actionBindings) {
-            if (bindingListMatches(actionBindings[action], type, value)) {
-                window.performAction(action);
+    var hasWheelBinding = false;
+    var hasMouseBinding = false;
+    for (var act in actionBindings) {
+        var bl = actionBindings[act];
+        if (bl) {
+            for (var bi = 0; bi < bl.length; bi++) {
+                if (bl[bi].type === "wheel") hasWheelBinding = true;
+                if (bl[bi].type === "mouse_button") hasMouseBinding = true;
             }
         }
-    };
+    }
 
-    window._ibKeyHandler = function(e) {
-        if (!_ibAlive()) return;
-        _ibDispatch("key", keyEventToBindingString(e));
-    };
-    document.addEventListener("keydown", window._ibKeyHandler, true);
+    if (hasWheelBinding) {
+        var _ibWheelLocked = false;
+        window._sqWheelHandler = function(e) {
+            var cContainer = document.querySelector(".anki-card-container");
+            if (!cContainer || _ibWheelLocked) return;
+            var dir = e.deltaY > 0 ? "down" : (e.deltaY < 0 ? "up" : null);
+            if (!dir) return;
 
-    window._ibMouseHandler = function(e) {
-        if (!_ibAlive()) return;
-        var btn = mouseButtonName(e.button);
-        if (!btn) return;
-        // Clicks landing directly on a cloze are already handled by the
-        // click-to-reveal listener set up above; don't double-fire.
-        if (e.target && e.target.closest && e.target.closest(".cloze")) return;
-        _ibDispatch("mouse_button", btn);
-    };
-    document.addEventListener("mousedown", window._ibMouseHandler);
+            var matched = false;
+            for (var a in actionBindings) {
+                if (bindingListMatches(actionBindings[a], "wheel", dir)) {
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) return;
 
-    // 400 ms cooldown prevents the 3-10 rapid wheel events a single scroll
-    // gesture fires from triggering an action multiple times per gesture.
-    var _ibWheelLocked = false;
-    window._ibWheelHandler = function(e) {
-        if (!_ibAlive() || _ibWheelLocked) return;
-        var dir = e.deltaY > 0 ? "down" : (e.deltaY < 0 ? "up" : null);
-        if (!dir) return;
+            var nextHidden = cContainer.querySelector(".cloze.active[data-state='hidden']");
+            if (!nextHidden) return; // Allow normal scrolling if no hidden clozes remain
 
-        var matched = false;
-        for (var action in actionBindings) {
-            if (bindingListMatches(actionBindings[action], "wheel", dir)) matched = true;
-        }
-        if (!matched) return;
+            e.preventDefault();
+            _ibWheelLocked = true;
+            setTimeout(function() { _ibWheelLocked = false; }, 400);
+            window.revealCloze(nextHidden);
+        };
+        document.addEventListener("wheel", window._sqWheelHandler, { passive: false });
+    }
 
-        // Only swallow the native scroll when a binding actually matched, so
-        // normal page scrolling still works when the wheel isn't bound.
-        e.preventDefault();
-        _ibWheelLocked = true;
-        setTimeout(function() { _ibWheelLocked = false; }, 400);
-        _ibDispatch("wheel", dir);
-    };
-    document.addEventListener("wheel", window._ibWheelHandler, { passive: false });
+    if (hasMouseBinding) {
+        window._sqMouseHandler = function(e) {
+            var cContainer = document.querySelector(".anki-card-container");
+            if (!cContainer) return;
+            var btn = mouseButtonName(e.button);
+            if (!btn) return;
+            if (e.target && typeof e.target.closest === "function" && (e.target.closest(".cloze") || e.target.closest(".ctrl"))) return;
+
+            for (var a in actionBindings) {
+                if (bindingListMatches(actionBindings[a], "mouse_button", btn)) {
+                    if (a === "reveal") {
+                        var nextHidden = cContainer.querySelector(".cloze.active[data-state='hidden']");
+                        if (nextHidden) {
+                            e.preventDefault();
+                            window.revealCloze(nextHidden);
+                            return;
+                        }
+                    } else {
+                        e.preventDefault();
+                        window.performAction(a);
+                        return;
+                    }
+                }
+            }
+        };
+        document.addEventListener("mousedown", window._sqMouseHandler, false);
+    }
 };
 
 window.updateClozeSequencing = function() {
@@ -519,6 +770,8 @@ window.updateClozeSequencing = function() {
 window.revealCloze = function(el) {
     if (el.getAttribute("data-state") === "hidden") {
         el.style.opacity = "0";
+        const conf = window.MINIMAL_CLOZE_CONFIG || {};
+        const animDelay = Math.max(20, Math.min(150, Math.round((conf.revealSpeed || 120) * 0.5)));
         setTimeout(function() {
             const actualAnswer = el.getAttribute("data-answer");
             if (actualAnswer) {
@@ -527,29 +780,44 @@ window.revealCloze = function(el) {
                 el.innerHTML = el.innerHTML.replace(/\[|\]/g, '');
             }
             el.setAttribute("data-state", "revealed");
+            if (conf.clozeRevealedCustom && conf.clozeRevealedColor) {
+                el.style.color = conf.clozeRevealedColor;
+            } else {
+                el.style.color = "";
+            }
             el.style.opacity = "1";
             window.updateClozeSequencing();
             
-            // Auto open the back card if this was the last hidden active cloze
             const remainingHidden = document.querySelectorAll(".cloze.active[data-state='hidden']");
-            const conf = window.MINIMAL_CLOZE_CONFIG || { autoRevealBack: true };
-            if (remainingHidden.length === 0 && window.pycmd && conf.autoRevealBack) {
-                window.pycmd("ans");
+            const shouldAutoReveal = (conf.autoRevealBack !== undefined) ? conf.autoRevealBack : true;
+            if (remainingHidden.length === 0 && shouldAutoReveal) {
+                if (window.pycmd) {
+                    window.pycmd("ans");
+                } else if (typeof showAnswer === "function") {
+                    showAnswer();
+                }
             }
-        }, 65);
+        }, animDelay);
     }
 };
 
 window.hideCloze = function(el) {
     if (el.getAttribute("data-state") === "revealed" && el.classList.contains("active")) {
         el.style.opacity = "0";
+        const conf = window.MINIMAL_CLOZE_CONFIG || {};
+        const animDelay = Math.max(20, Math.min(150, Math.round((conf.revealSpeed || 120) * 0.5)));
         setTimeout(function() {
             const originalText = el.getAttribute("data-original-text") || "[...]";
             el.innerHTML = originalText;
             el.setAttribute("data-state", "hidden");
+            if (conf.clozeHiddenCustom && conf.clozeHiddenColor) {
+                el.style.color = conf.clozeHiddenColor;
+            } else {
+                el.style.color = "";
+            }
             el.style.opacity = "1";
             window.updateClozeSequencing();
-        }, 65);
+        }, animDelay);
     }
 };
 
@@ -562,3 +830,25 @@ window.togglePassiveCloze = function(el) {
         el.style.opacity = "0.3";
     }
 };
+
+// Auto-execute initialization for mobile (AnkiMobile / AnkiDroid) and standalone contexts
+if (typeof window.setupClozeInteractions === "function") {
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function() {
+            window.setupClozeInteractions();
+        });
+    } else {
+        window.setupClozeInteractions();
+    }
+    setTimeout(function() {
+        if (typeof window.setupClozeInteractions === "function") {
+            window.setupClozeInteractions();
+        }
+    }, 40);
+    setTimeout(function() {
+        if (typeof window.setupClozeInteractions === "function") {
+            window.setupClozeInteractions();
+        }
+    }, 150);
+}
+
