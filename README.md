@@ -1,4 +1,4 @@
-# Sequential Cloze Revealer
+# Sequential Cloze 
 
 A focused and distraction-free way to review cloze cards in Anki.
 
