@@ -21,14 +21,16 @@ FIELDS = [
 
 FRONT_HTML = """<div class="anki-card-container">
   <div class="ctrl">
-    {{#Front Audio}}
-    {{Front Audio}}
-    {{/Front Audio}}
-    {{^Front Audio}}
-      {{#Front Sound}}
-      {{Front Sound}}
-      {{/Front Sound}}
-    {{/Front Audio}}
+    <div class="audio-ctrl">
+      {{#Front Audio}}
+      {{Front Audio}}
+      {{/Front Audio}}
+      {{^Front Audio}}
+        {{#Front Sound}}
+        {{Front Sound}}
+        {{/Front Sound}}
+      {{/Front Audio}}
+    </div>
 
     {{#Image}}
     <button type="button" class="ibtn" id="image-toggle-btn" onclick="toggleCardImage(event)" aria-label="Toggle Image" title="Toggle Image (G)">image</button>
@@ -64,14 +66,16 @@ FRONT_HTML = """<div class="anki-card-container">
 
 BACK_HTML = """<div class="anki-card-container">
   <div class="ctrl">
-    {{#Back Audio}}
-    {{Back Audio}}
-    {{/Back Audio}}
-    {{^Back Audio}}
-      {{#Back Sound}}
-      {{Back Sound}}
-      {{/Back Sound}}
-    {{/Back Audio}}
+    <div class="audio-ctrl">
+      {{#Back Audio}}
+      {{Back Audio}}
+      {{/Back Audio}}
+      {{^Back Audio}}
+        {{#Back Sound}}
+        {{Back Sound}}
+        {{/Back Sound}}
+      {{/Back Audio}}
+    </div>
 
     {{#Image}}
     <button type="button" class="ibtn" id="image-toggle-btn" onclick="toggleCardImage(event)" aria-label="Toggle Image" title="Toggle Image (G)">image</button>
@@ -148,7 +152,11 @@ def get_back_template() -> str:
 FRONT_TEMPLATE = get_front_template()
 BACK_TEMPLATE = get_back_template()
 
-def setup_note_type() -> None:
+NOTE_TYPE_VERSION = "1.0.12"
+
+def setup_note_type(force_update_templates: bool = False) -> None:
+    if not mw:
+        return
     models = mw.col.models
     existing = models.by_name(NOTE_TYPE_NAME)
     css = _read_css()
@@ -165,16 +173,25 @@ def setup_note_type() -> None:
                 models.add_field(existing, fld)
                 modified = True
 
-        # Keep templates and CSS aligned with Sentence Builder system
-        if existing.get('tmpls'):
-            for tmpl in existing['tmpls']:
-                if tmpl.get('qfmt') != fresh_front or tmpl.get('afmt') != fresh_back:
-                    tmpl['qfmt'] = fresh_front
-                    tmpl['afmt'] = fresh_back
-                    modified = True
+        stored_version = existing.get("sq_version")
+        # Only update templates if explicitly requested or if the note type version has upgraded
+        should_update_templates = force_update_templates or (stored_version != NOTE_TYPE_VERSION)
 
-        if existing.get('css') != css:
-            existing['css'] = css
+        if should_update_templates:
+            if existing.get('tmpls'):
+                for tmpl in existing['tmpls']:
+                    if tmpl.get('qfmt') != fresh_front or tmpl.get('afmt') != fresh_back:
+                        tmpl['qfmt'] = fresh_front
+                        tmpl['afmt'] = fresh_back
+                        modified = True
+            if existing.get('css') != css:
+                existing['css'] = css
+                modified = True
+            existing['sq_version'] = NOTE_TYPE_VERSION
+            modified = True
+        elif stored_version is None:
+            # Stamp current version so future restarts will not overwrite customized templates
+            existing['sq_version'] = NOTE_TYPE_VERSION
             modified = True
 
         if modified:
@@ -184,6 +201,7 @@ def setup_note_type() -> None:
     # Create new Cloze Note Type if not present
     m = models.new(NOTE_TYPE_NAME)
     m['type'] = 1  # Cloze note type in Anki
+    m['sq_version'] = NOTE_TYPE_VERSION
 
     for f_name in FIELDS:
         fld = models.new_field(f_name)

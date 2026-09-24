@@ -1,23 +1,31 @@
 /* ==========================================================================
-   Sequential Cloze Revealer - Sentence Builder Visual Style
+   Sequential Cloze - Sentence Builder Visual Style
    Strictly Scoped to .anki-card-container, Native Light & Night Mode Support
    Does NOT affect any other note types or native Anki controls
    ========================================================================== */
 
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 100% !important;
+}
+
 /* Scoped Reset & Card Container */
 .anki-card-container {
   --card-font-family: inherit;
-  --card-font-size: 18px;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
+  --card-font-size: 20px;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
   max-width: 800px;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
   margin: 0 auto;
-  box-sizing: border-box;
+  box-sizing: border-box !important;
   padding: 24px;
   background-color: transparent;
   font-family: var(--card-font-family, inherit);
-  font-size: var(--card-font-size, 18px);
+  font-size: var(--card-font-size, 20px);
   position: relative;
 }
 
@@ -32,21 +40,26 @@
   justify-content: flex-start !important;
   padding-top: 36px !important;
   padding-bottom: 24px !important;
-  min-height: auto !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
 }
 
 .anki-card-container.vpos-center {
   justify-content: center !important;
+  justify-content: safe center !important;
   padding-top: 24px !important;
   padding-bottom: 24px !important;
-  min-height: calc(100vh - 4px) !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
 }
 
 .anki-card-container.vpos-bottom {
   justify-content: flex-end !important;
+  justify-content: safe flex-end !important;
   padding-top: 24px !important;
   padding-bottom: 36px !important;
-  min-height: calc(100vh - 4px) !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
 }
 
 /* --- Horizontal Alignment: Left --- */
@@ -101,7 +114,7 @@
 
 .anki-card-container.halign-left .minimal-explanation,
 .anki-card-container.left-mode .minimal-explanation {
-  margin: 16px 0 0 0 !important;
+  margin: 12px 0 !important;
   margin-right: auto !important;
   text-align: left !important;
   max-width: 760px !important;
@@ -153,7 +166,9 @@
 
 .anki-card-container.mitcent-mode {
   justify-content: center !important;
-  min-height: calc(100vh - 4px) !important;
+  justify-content: safe center !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
 }
 
 .anki-card-container.halign-center .minimal-front,
@@ -181,9 +196,9 @@
 
 .anki-card-container.halign-center .minimal-explanation,
 .anki-card-container.center-mode .minimal-explanation {
-  margin: 16px auto 0 auto !important;
+  margin: 12px auto !important;
   text-align: left !important;
-  max-width: 660px !important;
+  max-width: 600px !important;
 }
 
 .anki-card-container.halign-center #extra-area,
@@ -257,7 +272,7 @@
 }
 
 .anki-card-container.halign-right .minimal-explanation {
-  margin: 16px 0 0 auto !important;
+  margin: 12px 0 12px auto !important;
   text-align: right !important;
   max-width: 760px !important;
 }
@@ -287,8 +302,9 @@
 
 /* Default Fallbacks */
 .anki-card-container:not(.vpos-top):not(.vpos-center):not(.vpos-bottom) {
-  justify-content: center !important;
-  min-height: calc(100vh - 4px) !important;
+  justify-content: flex-start !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
 }
 
 .anki-card-container:not(.halign-left):not(.halign-center):not(.halign-right):not(.left-mode):not(.center-mode) {
@@ -327,49 +343,40 @@
 
 body.nightMode .anki-card-container #answer-splitter,
 .nightMode .anki-card-container #answer-splitter,
-body.night_mode .anki-card-container #answer-splitter {
+body.night_mode .anki-card-container #answer-splitter,
+.night_mode .anki-card-container #answer-splitter,
+.card.nightMode .anki-card-container #answer-splitter,
+.card.night_mode .anki-card-container #answer-splitter {
   border-top-color: #36363a;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not(.lightMode) .anki-card-container #answer-splitter {
-    border-top-color: #36363a;
-  }
-}
-
-/* Minimal Explanation Block
-   Light mode = soft light box (#f7f7f7)
-   Night mode = soft dark box (#242426)
-   Follows ONLY Anki nightMode classes — never OS prefers-color-scheme.
-   This keeps Light mode correct even when Windows is in Dark mode.
-*/
+/* Minimal Explanation Block (Matches #extra-area .info-content exactly) */
 .anki-card-container .minimal-explanation {
-  font-size: 0.85em;
-  line-height: 1.5;
-  color: #666;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #333333;
   background-color: #f7f7f7;
   border: 1px solid #e5e5e5;
   border-radius: 6px;
   padding: 10px 14px;
-  margin: 18px auto 0 auto;
-  max-width: 660px;
+  margin: 12px auto;
+  max-width: 600px;
   width: 100%;
   box-sizing: border-box;
   text-align: left;
-  display: block;
-  overflow: visible;
-  white-space: normal;
-  word-wrap: break-word;
-  word-break: break-word;
 }
 
 body.nightMode .anki-card-container .minimal-explanation,
 .nightMode .anki-card-container .minimal-explanation,
-body.night_mode .anki-card-container .minimal-explanation {
-  color: #aaa;
+body.night_mode .anki-card-container .minimal-explanation,
+.night_mode .anki-card-container .minimal-explanation,
+.card.nightMode .anki-card-container .minimal-explanation,
+.card.night_mode .anki-card-container .minimal-explanation {
+  color: #dddddd;
   background-color: #242426;
-  border: 1px solid #36363a;
+  border-color: #36363a;
 }
+
 /* ==========================================================================
    Controls Position (.ctrl inside .anki-card-container)
    - Top Right (default)
@@ -518,6 +525,26 @@ body.night_mode .anki-card-container .minimal-explanation {
 }
 
 /* Scoped Native Audio Replay Button Support in .ctrl */
+.anki-card-container .ctrl .audio-ctrl {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 1.2;
+  pointer-events: auto;
+}
+
+.anki-card-container .ctrl.pos-top-left .audio-ctrl,
+.anki-card-container .ctrl.pos-bottom-left .audio-ctrl,
+.anki-card-container .ctrl-top-left .audio-ctrl,
+.anki-card-container .ctrl-bottom-left .audio-ctrl {
+  justify-content: flex-start;
+}
+
 .anki-card-container .ctrl .replay-button,
 .anki-card-container .ctrl .soundLink,
 .anki-card-container .ctrl a[href*="play"],
@@ -597,7 +624,10 @@ body.night_mode .anki-card-container .minimal-explanation {
 /* Night mode for .ibtn */
 .nightMode .anki-card-container .ibtn,
 body.nightMode .anki-card-container .ibtn,
-body.night_mode .anki-card-container .ibtn {
+body.night_mode .anki-card-container .ibtn,
+.night_mode .anki-card-container .ibtn,
+.card.nightMode .anki-card-container .ibtn,
+.card.night_mode .anki-card-container .ibtn {
   color: #777;
   opacity: 0.55;
   background: transparent;
@@ -605,7 +635,10 @@ body.night_mode .anki-card-container .ibtn {
 
 .nightMode .anki-card-container .ibtn:hover,
 body.nightMode .anki-card-container .ibtn:hover,
-body.night_mode .anki-card-container .ibtn:hover {
+body.night_mode .anki-card-container .ibtn:hover,
+.night_mode .anki-card-container .ibtn:hover,
+.card.nightMode .anki-card-container .ibtn:hover,
+.card.night_mode .anki-card-container .ibtn:hover {
   opacity: 0.9;
   color: #ccc;
   background: rgba(255, 255, 255, 0.06);
@@ -613,30 +646,14 @@ body.night_mode .anki-card-container .ibtn:hover {
 
 .nightMode .anki-card-container .ibtn.active,
 body.nightMode .anki-card-container .ibtn.active,
-body.night_mode .anki-card-container .ibtn.active {
+body.night_mode .anki-card-container .ibtn.active,
+.night_mode .anki-card-container .ibtn.active,
+.card.nightMode .anki-card-container .ibtn.active,
+.card.night_mode .anki-card-container .ibtn.active {
   opacity: 1;
   color: #eee;
   font-weight: 600;
   background: rgba(255, 255, 255, 0.1);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not(.lightMode) .anki-card-container .ibtn {
-    color: #777;
-    opacity: 0.55;
-    background: transparent;
-  }
-  :root:not(.lightMode) .anki-card-container .ibtn:hover {
-    opacity: 0.9;
-    color: #ccc;
-    background: rgba(255, 255, 255, 0.06);
-  }
-  :root:not(.lightMode) .anki-card-container .ibtn.active {
-    opacity: 1;
-    color: #eee;
-    font-weight: 600;
-    background: rgba(255, 255, 255, 0.1);
-  }
 }
 
 /* SVG icons inside .ibtn */
@@ -705,9 +722,9 @@ body.night_mode .anki-card-container .ibtn.active {
 .anki-card-container #extra-area .info-content {
   font-size: 14px;
   line-height: 1.55;
-  color: #555;
-  background: rgba(0, 0, 0, 0.03);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #333333;
+  background-color: #f7f7f7;
+  border: 1px solid #e5e5e5;
   border-radius: 6px;
   padding: 10px 14px;
   max-width: 600px;
@@ -718,43 +735,56 @@ body.night_mode .anki-card-container .ibtn.active {
 
 body.nightMode .anki-card-container #extra-area .info-content,
 .nightMode .anki-card-container #extra-area .info-content,
-body.night_mode .anki-card-container #extra-area .info-content {
-  color: #bbb;
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not(.lightMode) .anki-card-container #extra-area .info-content {
-    color: #bbb;
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.1);
-  }
+body.night_mode .anki-card-container #extra-area .info-content,
+.night_mode .anki-card-container #extra-area .info-content,
+.card.nightMode .anki-card-container #extra-area .info-content,
+.card.night_mode .anki-card-container #extra-area .info-content {
+  color: #dddddd;
+  background-color: #242426;
+  border-color: #36363a;
 }
 
 /* ==========================================================================
    Cloze States & Reveals (strictly scoped to .anki-card-container)
    ========================================================================== */
 .anki-card-container .cloze {
-  transition: opacity var(--reveal-speed, 120ms) ease;
-  padding: 0;
+  display: inline-block !important;
+  vertical-align: baseline !important;
+  min-width: 2.6em;
+  min-height: 1.25em;
+  line-height: inherit;
+  box-sizing: border-box !important;
+  padding: 0 2px !important;
+  margin: 0 !important;
+  text-align: center;
+  transition: opacity var(--reveal-speed, 120ms) ease, color var(--reveal-speed, 120ms) ease;
   pointer-events: auto !important;
+  font-weight: 400 !important;
+  text-decoration: none !important;
+  border: none !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer !important;
 }
 
 /* Active cloze */
 .anki-card-container .cloze.active {
+  display: inline-block !important;
+  vertical-align: baseline !important;
+  min-width: 2.6em;
+  min-height: 1.25em;
+  line-height: inherit;
+  box-sizing: border-box !important;
   background-color: transparent !important;
-  color: var(--cloze-hidden-color, inherit) !important;
   border: none !important;
-  padding: 0 !important;
+  padding: 0 2px !important;
   border-radius: 0 !important;
-  font-weight: inherit !important;
-  display: inline !important;
+  font-weight: 400 !important;
   margin: 0 !important;
   cursor: pointer !important;
   text-decoration: none !important;
   box-shadow: none !important;
-  transition: none !important;
+  transition: opacity var(--reveal-speed, 120ms) ease, color var(--reveal-speed, 120ms) ease;
   pointer-events: auto !important;
 }
 
@@ -765,28 +795,92 @@ body.night_mode .anki-card-container #extra-area .info-content {
 
 /* Current target cloze */
 .anki-card-container .cloze.active.current-cloze {
+  display: inline-block !important;
+  vertical-align: baseline !important;
+  min-width: 2.6em;
+  min-height: 1.25em;
+  line-height: inherit;
+  box-sizing: border-box !important;
   background-color: transparent !important;
-  color: var(--cloze-hidden-color, inherit) !important;
   border: none !important;
   box-shadow: none !important;
+  font-weight: 400 !important;
+  text-decoration: none !important;
 }
 
 /* Revealed cloze */
-.anki-card-container .cloze.active[data-state="revealed"] {
+.anki-card-container .cloze.active[data-state="revealed"],
+.anki-card-container .cloze.revealed,
+.anki-card-container .cloze[data-state="revealed"] {
+  display: inline-block !important;
+  vertical-align: baseline !important;
+  min-width: 2.6em;
+  min-height: 1.25em;
+  line-height: inherit;
+  box-sizing: border-box !important;
   background: none !important;
   border: none !important;
   box-shadow: none !important;
-  padding: 0 !important;
+  padding: 0 2px !important;
   margin: 0 !important;
   transform: none !important;
-  color: var(--cloze-revealed-color, inherit) !important;
-  font-weight: inherit !important;
-  display: inline !important;
+  text-decoration: none !important;
+  transition: opacity var(--reveal-speed, 120ms) ease, color var(--reveal-speed, 120ms) ease;
+}
+
+/* Bold cloze text: When bold-cloze is enabled, bold ONLY revealed cloze answers */
+.anki-card-container.bold-cloze .cloze.revealed,
+.anki-card-container.bold-cloze .cloze[data-state="revealed"] {
+  font-weight: 700 !important;
+}
+
+/* Hidden cloze blanks ALWAYS stay normal weight 400 */
+.anki-card-container .cloze,
+.anki-card-container .cloze:not(.revealed):not([data-state="revealed"]),
+.anki-card-container.bold-cloze .cloze:not(.revealed):not([data-state="revealed"]),
+.anki-card-container .cloze[data-state="hidden"],
+.anki-card-container.bold-cloze .cloze[data-state="hidden"],
+.anki-card-container .cloze.active[data-state="hidden"],
+.anki-card-container.bold-cloze .cloze.active[data-state="hidden"] {
+  font-weight: 400 !important;
+}
+
+/* Context items ALWAYS stay normal weight 400 */
+.anki-card-container .cloze-context,
+.anki-card-container .cloze-context-prev,
+.anki-card-container .cloze-context-after,
+.anki-card-container.bold-cloze .cloze-context,
+.anki-card-container.bold-cloze .cloze-context-prev,
+.anki-card-container.bold-cloze .cloze-context-after,
+.anki-card-container:not(.bold-cloze) .cloze-context,
+.anki-card-container:not(.bold-cloze) .cloze-context-prev,
+.anki-card-container:not(.bold-cloze) .cloze-context-after {
+  display: inline-block !important;
+  vertical-align: baseline !important;
+  line-height: inherit;
+  box-sizing: border-box !important;
+  padding: 0 2px !important;
+  margin: 0 !important;
+  font-weight: 400 !important;
+}
+
+/* When bold-cloze is disabled, all revealed clozes use normal weight */
+.anki-card-container:not(.bold-cloze) .cloze,
+.anki-card-container:not(.bold-cloze) .cloze.revealed,
+.anki-card-container:not(.bold-cloze) .cloze[data-state="revealed"] {
+  font-weight: 400 !important;
 }
 
 /* Passive cloze */
 .anki-card-container .cloze.passive {
-  color: inherit !important;
+  display: inline-block !important;
+  vertical-align: baseline !important;
+  min-width: 2.6em;
+  min-height: 1.25em;
+  line-height: inherit;
+  box-sizing: border-box !important;
+  padding: 0 2px !important;
+  margin: 0 !important;
   font-weight: normal !important;
   background: none !important;
   border: none !important;
@@ -794,3 +888,63 @@ body.night_mode .anki-card-container #extra-area .info-content {
   text-decoration: none !important;
   pointer-events: auto !important;
 }
+
+/* ==========================================================================
+   Sequential Context Mode (Cloze Overlapper)
+   Strictly scoped to .anki-card-container.mode-context
+   Does NOT affect Sequential Reveal or any other note types
+   ========================================================================== */
+.anki-card-container.mode-context .cloze-context-prev {
+  color: inherit !important;
+  text-decoration: none !important;
+  opacity: 0.95;
+}
+
+.anki-card-container.mode-context .cloze-context-after {
+  color: inherit !important;
+  text-decoration: none !important;
+  opacity: 0.95;
+}
+
+.anki-card-container.mode-context .cloze-context-next {
+  color: inherit !important;
+  text-decoration: none !important;
+  opacity: 0.95;
+}
+
+/* Active answer on the Back in Sequential Context */
+.anki-card-container.mode-context .cloze.active.current-cloze.revealed,
+.anki-card-container.mode-context .cloze.active[data-state="revealed"],
+.anki-card-container.mode-context .cloze.revealed {
+  text-decoration: none !important;
+}
+
+/* Masked before-context clozes */
+.anki-card-container.mode-context .cloze-context-masked {
+  display: inline-block !important;
+  padding: 0 4px !important;
+  color: #8e8e93 !important;
+  opacity: 0.65;
+  letter-spacing: 1px;
+  user-select: none !important;
+}
+
+/* Masked subsequent clozes on front side: hidden cleanly so context window is focused */
+.anki-card-container.mode-context .cloze-context-next-masked {
+  display: none !important;
+}
+
+.anki-card-container.mode-context li:has(> .cloze-context-next-masked:only-child) {
+  display: none !important;
+}
+
+body.nightMode .anki-card-container.mode-context .cloze-context-masked,
+.nightMode .anki-card-container.mode-context .cloze-context-masked,
+body.night_mode .anki-card-container.mode-context .cloze-context-masked,
+.night_mode .anki-card-container.mode-context .cloze-context-masked,
+.card.nightMode .anki-card-container.mode-context .cloze-context-masked,
+.card.night_mode .anki-card-container.mode-context .cloze-context-masked {
+  color: #71717a !important;
+  opacity: 0.6;
+}
+

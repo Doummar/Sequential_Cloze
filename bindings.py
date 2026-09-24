@@ -1,6 +1,72 @@
 # Generic input-binding system
 
-from aqt.qt import *
+try:
+    from aqt.qt import *
+except ImportError:
+    class _DummyKey:
+        Key_Space = 0x20
+        Key_Return = 0x01000004
+        Key_Enter = 0x01000005
+        Key_Escape = 0x01000000
+        Key_Tab = 0x01000001
+        Key_Backspace = 0x01000003
+        Key_Delete = 0x01000007
+        Key_Home = 0x01000010
+        Key_End = 0x01000011
+        Key_PageUp = 0x01000016
+        Key_PageDown = 0x01000017
+        Key_Up = 0x01000013
+        Key_Down = 0x01000015
+        Key_Left = 0x01000012
+        Key_Right = 0x01000014
+        Key_Control = 0x01000021
+        Key_Alt = 0x01000023
+        Key_Shift = 0x01000020
+        Key_Meta = 0x01000022
+
+    for _idx in range(1, 13):
+        setattr(_DummyKey, f"Key_F{_idx}", 0x01000030 + _idx)
+
+    class _DummyMouseButton:
+        LeftButton = 1
+        RightButton = 2
+        MiddleButton = 4
+        BackButton = 8
+        ForwardButton = 16
+
+    class _DummyKeyboardModifier:
+        ControlModifier = 0x04000000
+        AltModifier = 0x08000000
+        ShiftModifier = 0x02000000
+        MetaModifier = 0x10000000
+
+    class _DummyQt:
+        Key = _DummyKey
+        MouseButton = _DummyMouseButton
+        KeyboardModifier = _DummyKeyboardModifier
+
+    Qt = _DummyQt
+
+    class _DummySignal:
+        def connect(self, *a, **k): pass
+        def emit(self, *a, **k): pass
+
+    class _DummyWidget:
+        def __init__(self, *args, **kwargs):
+            self.clicked = _DummySignal()
+            self.textChanged = _DummySignal()
+            self.currentIndexChanged = _DummySignal()
+            self.finished = _DummySignal()
+        def __getattr__(self, name): return lambda *a, **k: _DummyWidget()
+
+    QDialog = _DummyWidget
+    QWidget = _DummyWidget
+    QVBoxLayout = _DummyWidget
+    QHBoxLayout = _DummyWidget
+    QLabel = _DummyWidget
+    QPushButton = _DummyWidget
+    QListWidget = _DummyWidget
+    QListWidgetItem = _DummyWidget
 try:
     from PyQt6.QtGui import QFont
 except ImportError:
@@ -21,12 +87,19 @@ DEFAULT_BINDINGS = {
     "reveal": [{"type": "wheel", "value": "down"}],
 }
 
+def _qt_val(scope: str, name: str, fallback=0):
+    if hasattr(Qt, scope) and hasattr(getattr(Qt, scope), name):
+        return getattr(getattr(Qt, scope), name)
+    if hasattr(Qt, name):
+        return getattr(Qt, name)
+    return fallback
+
 MOUSE_BUTTON_NAMES = {
-    Qt.MouseButton.LeftButton:    "left",
-    Qt.MouseButton.RightButton:   "right",
-    Qt.MouseButton.MiddleButton:  "middle",
-    Qt.MouseButton.BackButton:    "back",
-    Qt.MouseButton.ForwardButton: "forward",
+    _qt_val("MouseButton", "LeftButton", 1):    "left",
+    _qt_val("MouseButton", "RightButton", 2):   "right",
+    _qt_val("MouseButton", "MiddleButton", 4):  "middle",
+    _qt_val("MouseButton", "BackButton", 8):    "back",
+    _qt_val("MouseButton", "ForwardButton", 16): "forward",
 }
 
 MOUSE_BUTTON_LABELS = {
@@ -38,48 +111,100 @@ MOUSE_BUTTON_LABELS = {
 }
 
 _QT_KEY_NAMES = {
-    Qt.Key.Key_Space:     "Space",
-    Qt.Key.Key_Return:    "Enter",
-    Qt.Key.Key_Enter:     "Enter",
-    Qt.Key.Key_Escape:    "Escape",
-    Qt.Key.Key_Tab:       "Tab",
-    Qt.Key.Key_Backspace: "Backspace",
-    Qt.Key.Key_Delete:    "Delete",
-    Qt.Key.Key_Up:        "Up",
-    Qt.Key.Key_Down:      "Down",
-    Qt.Key.Key_Left:      "Left",
-    Qt.Key.Key_Right:     "Right",
-    Qt.Key.Key_Home:      "Home",
-    Qt.Key.Key_End:       "End",
-    Qt.Key.Key_PageUp:    "PageUp",
-    Qt.Key.Key_PageDown:  "PageDown",
+    _qt_val("Key", "Key_Space", 0x20):           "Space",
+    _qt_val("Key", "Key_Return", 0x01000004):    "Enter",
+    _qt_val("Key", "Key_Enter", 0x01000005):     "Enter",
+    _qt_val("Key", "Key_Escape", 0x01000000):    "Escape",
+    _qt_val("Key", "Key_Tab", 0x01000001):       "Tab",
+    _qt_val("Key", "Key_Backspace", 0x01000003): "Backspace",
+    _qt_val("Key", "Key_Delete", 0x01000007):    "Delete",
+    _qt_val("Key", "Key_Up", 0x01000013):        "Up",
+    _qt_val("Key", "Key_Down", 0x01000015):      "Down",
+    _qt_val("Key", "Key_Left", 0x01000012):      "Left",
+    _qt_val("Key", "Key_Right", 0x01000014):     "Right",
+    _qt_val("Key", "Key_Home", 0x01000010):      "Home",
+    _qt_val("Key", "Key_End", 0x01000011):       "End",
+    _qt_val("Key", "Key_PageUp", 0x01000016):    "PageUp",
+    _qt_val("Key", "Key_PageDown", 0x01000017):  "PageDown",
+    0x20:       "Space",
+    0x01000004: "Enter",
+    0x01000005: "Enter",
+    0x01000000: "Escape",
+    0x01000001: "Tab",
+    0x01000003: "Backspace",
+    0x01000007: "Delete",
+    0x01000013: "Up",
+    0x01000015: "Down",
+    0x01000012: "Left",
+    0x01000014: "Right",
+    0x01000010: "Home",
+    0x01000011: "End",
+    0x01000016: "PageUp",
+    0x01000017: "PageDown",
 }
 for _i in range(1, 13):
-    _QT_KEY_NAMES[getattr(Qt.Key, f"Key_F{_i}")] = f"F{_i}"
+    _k = _qt_val("Key", f"Key_F{_i}", 0x01000030 + _i)
+    if _k is not None:
+        _QT_KEY_NAMES[_k] = f"F{_i}"
+        _QT_KEY_NAMES[0x01000030 + _i] = f"F{_i}"
 
 _IGNORED_KEYS = {
-    Qt.Key.Key_Control, Qt.Key.Key_Alt,
-    Qt.Key.Key_Shift, Qt.Key.Key_Meta,
+    _qt_val("Key", "Key_Control", 0x01000021),
+    _qt_val("Key", "Key_Alt", 0x01000023),
+    _qt_val("Key", "Key_Shift", 0x01000020),
+    _qt_val("Key", "Key_Meta", 0x01000022),
+    0x01000021,
+    0x01000023,
+    0x01000020,
+    0x01000022,
 }
 
-def qt_key_to_binding_name(key: int) -> str:
+def _mod_value(mods):
+    try:
+        return int(mods)
+    except Exception:
+        pass
+    try:
+        return int(mods.value)
+    except Exception:
+        return 0
+
+def qt_key_to_binding_name(key) -> str:
+    key_int = _mod_value(key)
     if key in _QT_KEY_NAMES:
         return _QT_KEY_NAMES[key]
-    if 0x20 <= key <= 0x7e:
-        return chr(key).upper()
-    text = QKeySequence(key).toString()
-    name = text if text else f"Key_{key}"
-    return unicodedata.normalize("NFC", name)
+    if key_int in _QT_KEY_NAMES:
+        return _QT_KEY_NAMES[key_int]
+    if 0x20 <= key_int <= 0x7e:
+        return chr(key_int).upper()
+    try:
+        text = QKeySequence(key).toString()
+        name = text if text else f"Key_{key_int}"
+        return unicodedata.normalize("NFC", name)
+    except Exception:
+        return f"Key_{key_int}"
 
 def format_key_binding(key_name: str, modifiers) -> str:
     parts = []
-    if modifiers & Qt.KeyboardModifier.ControlModifier:
+    try:
+        ctrl = int(Qt.KeyboardModifier.ControlModifier)
+        alt = int(Qt.KeyboardModifier.AltModifier)
+        shift = int(Qt.KeyboardModifier.ShiftModifier)
+        meta = int(Qt.KeyboardModifier.MetaModifier)
+    except Exception:
+        ctrl = _mod_value(_qt_val("KeyboardModifier", "ControlModifier", 0x04000000)) or 0x04000000
+        alt = _mod_value(_qt_val("KeyboardModifier", "AltModifier", 0x08000000)) or 0x08000000
+        shift = _mod_value(_qt_val("KeyboardModifier", "ShiftModifier", 0x02000000)) or 0x02000000
+        meta = _mod_value(_qt_val("KeyboardModifier", "MetaModifier", 0x10000000)) or 0x10000000
+
+    mod_val = _mod_value(modifiers)
+    if mod_val & ctrl:
         parts.append("Ctrl")
-    if modifiers & Qt.KeyboardModifier.AltModifier:
+    if mod_val & alt:
         parts.append("Alt")
-    if modifiers & Qt.KeyboardModifier.ShiftModifier:
+    if mod_val & shift:
         parts.append("Shift")
-    if modifiers & Qt.KeyboardModifier.MetaModifier:
+    if mod_val & meta:
         parts.append("Meta")
     parts.append(key_name)
     return "+".join(parts)
@@ -151,19 +276,27 @@ class BindingCaptureDialog(QDialog):
         layout.addWidget(hint)
 
         cancel_btn = QPushButton("Cancel")
-        cancel_btn.setFixedHeight(22)
+        cancel_btn.setFixedHeight(26)
         cancel_btn.clicked.connect(self.reject)
         layout.addWidget(cancel_btn)
 
         self.setLayout(layout)
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        focus_policy = _qt_val("FocusPolicy", "StrongFocus", getattr(Qt, "StrongFocus", None))
+        if focus_policy is not None:
+            try:
+                self.setFocusPolicy(focus_policy)
+            except Exception:
+                pass
 
     def keyPressEvent(self, event) -> None:
         key = event.key()
-        if key == Qt.Key.Key_Escape:
+        esc = _qt_val("Key", "Key_Escape", 0x01000000)
+        esc_val = _mod_value(esc) or 0x01000000
+        key_val = _mod_value(key)
+        if key == esc or key_val == esc_val:
             self.reject()
             return
-        if key in _IGNORED_KEYS:
+        if key in _IGNORED_KEYS or key_val in _IGNORED_KEYS:
             return
         name = qt_key_to_binding_name(key)
         value = format_key_binding(name, event.modifiers())
@@ -186,7 +319,9 @@ class BindingCaptureDialog(QDialog):
 
 def capture_binding(parent=None, theme_qss: str = ""):
     dlg = BindingCaptureDialog(parent, theme_qss)
-    if dlg.exec() == QDialog.DialogCode.Accepted:
+    accepted = getattr(getattr(QDialog, "DialogCode", QDialog), "Accepted", 1)
+    res = dlg.exec() if hasattr(dlg, "exec") else dlg.exec_()
+    if res == accepted:
         return dlg.result_binding
     return None
 
@@ -198,19 +333,20 @@ class BindingListWidget(QWidget):
 
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(4)
+        layout.setSpacing(8)
 
         self.list_widget = QListWidget()
-        self.list_widget.setMaximumHeight(88)
+        self.list_widget.setMinimumHeight(64)
+        self.list_widget.setMaximumHeight(80)
         layout.addWidget(self.list_widget)
 
         btn_row = QHBoxLayout()
-        btn_row.setSpacing(6)
+        btn_row.setSpacing(8)
         self.add_btn = QPushButton("+ Add Binding")
-        self.add_btn.setFixedHeight(22)
+        self.add_btn.setFixedHeight(26)
         self.add_btn.clicked.connect(self._on_add)
         self.remove_btn = QPushButton("Remove Selected")
-        self.remove_btn.setFixedHeight(22)
+        self.remove_btn.setFixedHeight(26)
         self.remove_btn.clicked.connect(self._on_remove)
         btn_row.addWidget(self.add_btn)
         btn_row.addWidget(self.remove_btn)

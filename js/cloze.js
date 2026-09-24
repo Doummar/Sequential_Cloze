@@ -1,4 +1,4 @@
-// Sequential Cloze Revealer - Reviewer Frontend Script (with .ctrl + .ibtn system)
+// Sequential Cloze - Reviewer Frontend Script (with .ctrl + .ibtn system)
 
 // Toggle Image: Injects content into #extra-area (Sentence Builder system)
 window.toggleCardImage = function(event) {
@@ -6,9 +6,11 @@ window.toggleCardImage = function(event) {
         event.stopPropagation();
         event.preventDefault();
     }
-    const extraArea = document.getElementById("extra-area");
-    const rawImage = document.getElementById("raw-image");
-    const btn = document.getElementById("image-toggle-btn");
+    const container = document.querySelector(".anki-card-container");
+    if (!container) return;
+    const extraArea = container.querySelector("#extra-area");
+    const rawImage = container.querySelector("#raw-image");
+    const btn = container.querySelector("#image-toggle-btn");
     if (!extraArea || !rawImage) return;
 
     const isCurrent = extraArea.getAttribute("data-mode") === "image";
@@ -21,7 +23,7 @@ window.toggleCardImage = function(event) {
         extraArea.setAttribute("data-mode", "image");
         if (btn) btn.classList.add("active");
 
-        const infoBtn = document.getElementById("info-toggle-btn");
+        const infoBtn = container.querySelector("#info-toggle-btn");
         if (infoBtn) infoBtn.classList.remove("active");
     }
 };
@@ -32,9 +34,11 @@ window.toggleInfo = function(event) {
         event.stopPropagation();
         event.preventDefault();
     }
-    const extraArea = document.getElementById("extra-area");
-    const rawInfo = document.getElementById("raw-info");
-    const btn = document.getElementById("info-toggle-btn");
+    const container = document.querySelector(".anki-card-container");
+    if (!container) return;
+    const extraArea = container.querySelector("#extra-area");
+    const rawInfo = container.querySelector("#raw-info");
+    const btn = container.querySelector("#info-toggle-btn");
     if (!extraArea || !rawInfo) return;
 
     const isCurrent = extraArea.getAttribute("data-mode") === "info";
@@ -47,7 +51,7 @@ window.toggleInfo = function(event) {
         extraArea.setAttribute("data-mode", "info");
         if (btn) btn.classList.add("active");
 
-        const imgBtn = document.getElementById("image-toggle-btn");
+        const imgBtn = container.querySelector("#image-toggle-btn");
         if (imgBtn) imgBtn.classList.remove("active");
     }
 };
@@ -144,11 +148,17 @@ window.teardownClozeInteractions = function() {
 };
 
 window.performAction = function(action) {
+    const container = document.querySelector(".anki-card-container");
+    if (!container) return;
     if (action === "reveal") {
-        var hiddenCloze = document.querySelector(".cloze.active[data-state='hidden']");
+        var hiddenCloze = container.querySelector(".cloze.active[data-state='hidden']");
         if (hiddenCloze) {
             window.revealCloze(hiddenCloze);
         }
+    } else if (action === "image") {
+        window.toggleCardImage();
+    } else if (action === "info") {
+        window.toggleInfo();
     }
 };
 
@@ -217,29 +227,38 @@ window.setupClozeInteractions = function() {
 
     const container = document.querySelector(".anki-card-container");
     if (!container) {
-        if (!window._setupClozeRetryCount) window._setupClozeRetryCount = 0;
-        if (window._setupClozeRetryCount < 10) {
-            window._setupClozeRetryCount++;
-            setTimeout(window.setupClozeInteractions, 50);
-        }
+        // STRICT SCOPING: Not a Sequential Cloze card - immediately exit
         return;
     }
-    window._setupClozeRetryCount = 0;
     
     const config = window.MINIMAL_CLOZE_CONFIG || {
+        reviewMode: "sequential_reveal",
+        contextBefore: 1,
+        contextAfter: 0,
+        contextMaskSubsequent: true,
+        backContextBefore: "all",
+        backContextAfter: "all",
+        cardVerticalPosition: "top",
+        cardHorizontalAlign: "center",
+        controlsPosition: "top-right",
+        fontFamily: "System Default",
+        fontSize: 20,
+        boldClozeText: false,
+        bold_cloze_text: false,
         showInfoByDefault: false,
         enableClickReveal: true,
         centerMode: true,
-        mitcentMode: true,
+        mitcentMode: false,
         revealSpeed: 120,
         darkCompatibility: true,
-        autoRevealBack: true,
+        autoRevealBack: false,
         clozeRevealedCustom: false,
         clozeRevealedColor: "#c00000",
         clozeHiddenCustom: false,
         clozeHiddenColor: "#0284c7",
         activeClozeIdx: 1,
         shortcutRoll: "Space",
+        shortcutRevealAll: "Shift + Space",
         shortcutInfo: "H",
         shortcutImage: "G",
         actionBindings: { reveal: [{ type: "wheel", value: "down" }] }
@@ -253,13 +272,20 @@ window.setupClozeInteractions = function() {
     if (config.clozeRevealedCustom && config.clozeRevealedColor) {
         container.style.setProperty('--cloze-revealed-color', config.clozeRevealedColor);
     } else {
-        container.style.setProperty('--cloze-revealed-color', 'inherit');
+        container.style.removeProperty('--cloze-revealed-color');
     }
     
     if (config.clozeHiddenCustom && config.clozeHiddenColor) {
         container.style.setProperty('--cloze-hidden-color', config.clozeHiddenColor);
     } else {
-        container.style.setProperty('--cloze-hidden-color', 'inherit');
+        container.style.removeProperty('--cloze-hidden-color');
+    }
+
+    // Bold cloze text: Container-level class when enabled
+    if (config.boldClozeText || config.bold_cloze_text) {
+        container.classList.add("bold-cloze");
+    } else {
+        container.classList.remove("bold-cloze");
     }
 
     // Apply font family and font size strictly to card container
@@ -285,7 +311,7 @@ window.setupClozeInteractions = function() {
     container.style.setProperty('--card-font-family', chosenFont);
     container.style.fontFamily = chosenFont;
 
-    var chosenFontSize = (config.fontSize ? config.fontSize : 18) + "px";
+    var chosenFontSize = (config.fontSize ? config.fontSize : 20) + "px";
     container.style.setProperty('--card-font-size', chosenFontSize);
     container.style.fontSize = chosenFontSize;
 
@@ -300,12 +326,12 @@ window.setupClozeInteractions = function() {
         backEl.style.fontSize = chosenFontSize;
     }
     
-    const isBackCard = document.getElementById("answer-splitter") !== null ||
-                       document.querySelector(".minimal-back") !== null;
+    const isBackCard = container.querySelector("#answer-splitter") !== null ||
+                       container.querySelector(".minimal-back") !== null;
 
     // Apply layout and positioning modes strictly to .anki-card-container
     const applyCentering = function() {
-        const cardContainer = document.querySelector(".anki-card-container");
+        const cardContainer = container;
         if (!cardContainer) return;
 
         // 1. Controls Position (.ctrl bar: Audio + Image + Info)
@@ -388,9 +414,9 @@ window.setupClozeInteractions = function() {
     setTimeout(applyCentering, 100);
 
     // Extra area initial state (Sentence Builder system)
-    const extraArea = document.getElementById("extra-area");
-    const infoBtn = document.getElementById("info-toggle-btn");
-    const imgBtn = document.getElementById("image-toggle-btn");
+    const extraArea = container.querySelector("#extra-area");
+    const infoBtn = container.querySelector("#info-toggle-btn");
+    const imgBtn = container.querySelector("#image-toggle-btn");
     if (extraArea) {
         extraArea.innerHTML = "";
         extraArea.removeAttribute("data-mode");
@@ -402,11 +428,95 @@ window.setupClozeInteractions = function() {
         }
     }
 
-    const rawEl = document.getElementById("raw-front");
-    const frontContentEl = document.querySelector(".minimal-front");
+    const rawEl = container.querySelector("#raw-front");
+    const frontContentEl = container.querySelector(".minimal-front");
     
-    // Multi-platform enrichment: Parse raw Front if available
-    if (rawEl && frontContentEl && !frontContentEl.hasAttribute("data-interactive-rendered")) {
+    // Multi-platform enrichment: Parse raw Front if available (Sequential Reveal mode)
+    if (config.reviewMode !== "sequential_context" && rawEl && frontContentEl) {
+        let rawText = rawEl.innerHTML || rawEl.textContent || "";
+        const clozPattern = /\{\{c(\d+)::(.*?)\}\}/gi;
+        const rawClozes = [];
+        let match;
+        while ((match = clozPattern.exec(rawText)) !== null) {
+            const clNum = parseInt(match[1], 10);
+            const content = match[2];
+            const parts = content.split("::");
+            let hint = "";
+            let answer = content;
+            if (parts.length > 1) {
+                hint = parts[parts.length - 1];
+                answer = parts.slice(0, -1).join("::");
+            }
+            rawClozes.push({ num: clNum, answer: answer.trim(), hint: hint.trim() });
+        }
+
+        let activeIdx = 1;
+        if (config.activeClozeIdx) {
+            activeIdx = parseInt(config.activeClozeIdx, 10);
+        } else {
+            const nativeClozeSpan = frontContentEl.querySelector(".cloze");
+            if (nativeClozeSpan) {
+                const natText = (nativeClozeSpan.textContent || nativeClozeSpan.innerText || "").trim();
+                const plainNativeText = frontContentEl.innerText || frontContentEl.textContent || "";
+                for (let i = 0; i < rawClozes.length; i++) {
+                    const rc = rawClozes[i];
+                    if (rc.hint && natText.includes(rc.hint)) {
+                        activeIdx = rc.num;
+                        break;
+                    }
+                }
+                if (activeIdx === 1) {
+                    for (let i = 0; i < rawClozes.length; i++) {
+                        const rc = rawClozes[i];
+                        if (!plainNativeText.includes(rc.answer)) {
+                            activeIdx = rc.num;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        let cardMatches = rawClozes.filter(function(rc) { return rc.num === activeIdx; });
+        if (cardMatches.length === 0) {
+            cardMatches = rawClozes;
+        }
+
+        const clozeSpans = container.querySelectorAll(".cloze");
+        clozeSpans.forEach(function(clozeSpan, idx) {
+            const cardMatch = (clozeSpans.length === rawClozes.length && idx < rawClozes.length)
+                ? rawClozes[idx]
+                : ((idx < cardMatches.length) ? cardMatches[idx] : (idx < rawClozes.length ? rawClozes[idx] : null));
+
+            if (cardMatch) {
+                if (!clozeSpan.getAttribute("data-answer")) {
+                    clozeSpan.setAttribute("data-answer", cardMatch.answer);
+                }
+                if (cardMatch.hint && !clozeSpan.getAttribute("data-hint")) {
+                    clozeSpan.setAttribute("data-hint", cardMatch.hint);
+                }
+                if (!clozeSpan.getAttribute("data-cloze-idx")) {
+                    clozeSpan.setAttribute("data-cloze-idx", String(cardMatch.num));
+                }
+            }
+            const hint = clozeSpan.getAttribute("data-hint") || (cardMatch ? cardMatch.hint : "");
+            const canonicalMarker = hint ? "[" + hint + "]" : "[...]";
+            clozeSpan.setAttribute("data-original-text", canonicalMarker);
+
+            if (isBackCard) {
+                clozeSpan.setAttribute("data-state", "revealed");
+                clozeSpan.classList.add("revealed");
+            } else if (clozeSpan.getAttribute("data-state") !== "revealed") {
+                clozeSpan.setAttribute("data-state", "hidden");
+                clozeSpan.classList.add("active");
+                clozeSpan.classList.remove("revealed");
+                clozeSpan.innerHTML = canonicalMarker;
+            }
+        });
+    }
+
+    // Multi-platform enrichment: Parse raw Front if available (Strictly for Sequential Context mode)
+    if (config.reviewMode === "sequential_context" && rawEl && frontContentEl && !frontContentEl.hasAttribute("data-interactive-rendered")) {
         frontContentEl.setAttribute("data-interactive-rendered", "true");
         let rawText = rawEl.innerHTML || rawEl.textContent || "";
         
@@ -452,8 +562,96 @@ window.setupClozeInteractions = function() {
                 }
             }
         }
+
+        const orderedClozeNums = [];
+        for (let i = 0; i < rawClozes.length; i++) {
+            if (orderedClozeNums.indexOf(rawClozes[i].num) === -1) {
+                orderedClozeNums.push(rawClozes[i].num);
+            }
+        }
+        const activePos = orderedClozeNums.indexOf(activeIdx);
         
-        const enrichedHtml = rawText.replace(/\{\{c(\d+)::(.*?)\}\}/gi, function(match, clNumStr, content) {
+        const isContextMode = (config.reviewMode === "sequential_context");
+        if (isContextMode) {
+            const cardContainer = document.querySelector(".anki-card-container");
+            if (cardContainer) {
+                cardContainer.classList.add("mode-context");
+            }
+        }
+
+        function balanceHtmlTags(html) {
+            const voidTags = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"]);
+            const tagRegex = /<\s*(\/)?\s*([a-zA-Z0-9]+)(?:\s+[^>]*)?>/g;
+            const stack = [];
+            let match;
+            while ((match = tagRegex.exec(html)) !== null) {
+                const isClosing = Boolean(match[1]);
+                const tagName = match[2].toLowerCase();
+                if (voidTags.has(tagName) || match[0].endsWith("/>")) continue;
+                if (!isClosing) {
+                    stack.push(tagName);
+                } else {
+                    const idx = stack.lastIndexOf(tagName);
+                    if (idx !== -1) {
+                        stack.splice(idx);
+                    }
+                }
+            }
+            let closing = "";
+            for (let i = stack.length - 1; i >= 0; i--) {
+                closing += "</" + stack[i] + ">";
+            }
+            return html + closing;
+        }
+
+        let processedRawText = rawText;
+        if (isContextMode && !isBackCard && (config.contextMaskSubsequent !== false)) {
+            const ca = (config.contextAfter !== undefined) ? config.contextAfter : 0;
+            if (ca !== "all") {
+                const caNum = (typeof ca === "number" ? ca : (parseInt(ca, 10) || 0));
+                let maxAllowedOrd = activeIdx + caNum;
+                if (activePos !== -1) {
+                    const allowedIdx = Math.min(activePos + caNum, orderedClozeNums.length - 1);
+                    maxAllowedOrd = orderedClozeNums[allowedIdx];
+                }
+                let lastEnd = null;
+                const cutoffRegex = /\{\{c(\d+)::(.*?)\}\}/gi;
+                let cm;
+                while ((cm = cutoffRegex.exec(rawText)) !== null) {
+                    const cNum = parseInt(cm[1], 10);
+                    if (cNum <= maxAllowedOrd) {
+                        lastEnd = cm.index + cm[0].length;
+                    }
+                }
+                if (lastEnd !== null && lastEnd < rawText.length) {
+                    processedRawText = balanceHtmlTags(rawText.slice(0, lastEnd).trimEnd());
+                }
+            }
+        } else if (isContextMode && isBackCard) {
+            const bca = (config.backContextAfter !== undefined) ? config.backContextAfter : ((config.back_context_after !== undefined) ? config.back_context_after : "all");
+            if (bca !== "all") {
+                const bcaNum = (typeof bca === "number" ? bca : (parseInt(bca, 10) || 0));
+                let maxAllowedOrd = activeIdx + bcaNum;
+                if (activePos !== -1) {
+                    const allowedIdx = Math.min(activePos + bcaNum, orderedClozeNums.length - 1);
+                    maxAllowedOrd = orderedClozeNums[allowedIdx];
+                }
+                let lastEnd = null;
+                const cutoffRegex = /\{\{c(\d+)::(.*?)\}\}/gi;
+                let cm;
+                while ((cm = cutoffRegex.exec(rawText)) !== null) {
+                    const cNum = parseInt(cm[1], 10);
+                    if (cNum <= maxAllowedOrd) {
+                        lastEnd = cm.index + cm[0].length;
+                    }
+                }
+                if (lastEnd !== null && lastEnd < rawText.length) {
+                    processedRawText = balanceHtmlTags(rawText.slice(0, lastEnd).trimEnd());
+                }
+            }
+        }
+
+        const enrichedHtml = processedRawText.replace(/\{\{c(\d+)::(.*?)\}\}/gi, function(match, clNumStr, content) {
             const clNum = parseInt(clNumStr, 10);
             const parts = content.split("::");
             let hint = "";
@@ -468,61 +666,188 @@ window.setupClozeInteractions = function() {
             const safeHint = hint.replace(/"/g, "&quot;");
             const originalText = hint ? "[" + hint + "]" : "[...]";
             
-            if (isActive) {
+            if (isContextMode) {
                 if (isBackCard) {
-                    return '<span class="cloze active" data-cloze-idx="' + clNum + '" data-answer="' + safeAnswer + '" data-hint="' + safeHint + '" data-state="revealed" data-original-text="' + originalText + '" style="pointer-events: auto !important; cursor: pointer !important;">' + answer + '</span>';
+                    if (isActive) {
+                        return '<span class="cloze active current-cloze revealed" data-cloze-idx="' + clNum + '" data-answer="' + safeAnswer + '" data-hint="' + safeHint + '" data-state="revealed" style="pointer-events: auto !important;">' + answer + '</span>';
+                    }
+                    const bcbRaw = (config.backContextBefore !== undefined) ? config.backContextBefore : config.back_context_before;
+                    const bcb = (bcbRaw === "all" || bcbRaw === undefined) ? (bcbRaw || "all") : (typeof bcbRaw === "number" ? bcbRaw : parseInt(bcbRaw, 10));
+                    const bcaRaw = (config.backContextAfter !== undefined) ? config.backContextAfter : config.back_context_after;
+                    const bca = (bcaRaw === "all" || bcaRaw === undefined) ? (bcaRaw || "all") : (typeof bcaRaw === "number" ? bcaRaw : parseInt(bcaRaw, 10));
+                    
+                    const pos = orderedClozeNums.indexOf(clNum);
+                    const hasPositions = (pos !== -1 && activePos !== -1);
+                    const isBefore = hasPositions ? (pos < activePos) : (clNum < activeIdx);
+                    
+                    if (isBefore) {
+                        const prevDist = hasPositions ? (activePos - pos) : (activeIdx - clNum);
+                        const inContext = (bcb === "all") || (typeof bcb === "number" && bcb >= 0 && prevDist <= bcb);
+                        if (inContext) {
+                            return '<span class="cloze-context cloze-context-prev" data-cloze-idx="' + clNum + '">' + answer + '</span>';
+                        }
+                        return "";
+                    } else {
+                        const afterDist = hasPositions ? (pos - activePos) : (clNum - activeIdx);
+                        const inContextAfter = (bca === "all") || (typeof bca === "number" && bca >= 0 && afterDist <= bca);
+                        if (inContextAfter) {
+                            return '<span class="cloze-context cloze-context-after" data-cloze-idx="' + clNum + '">' + answer + '</span>';
+                        }
+                        return "";
+                    }
                 } else {
-                    return '<span class="cloze active" data-cloze-idx="' + clNum + '" data-answer="' + safeAnswer + '" data-hint="' + safeHint + '" data-state="hidden" data-original-text="' + originalText + '" style="pointer-events: auto !important; cursor: pointer !important;">' + originalText + '</span>';
+                    // Front side in Sequential Context
+                    if (isActive) {
+                        return '<span class="cloze active current-cloze" data-cloze-idx="' + clNum + '" data-answer="' + safeAnswer + '" data-hint="' + safeHint + '" data-state="hidden" data-original-text="' + originalText + '" style="pointer-events: auto !important; cursor: pointer !important;">' + originalText + '</span>';
+                    }
+                    const cbRaw = (config.contextBefore !== undefined) ? config.contextBefore : config.context_before;
+                    const cb = (cbRaw === "all") ? "all" : (typeof cbRaw === "number" ? cbRaw : (parseInt(cbRaw, 10) || 1));
+                    const caRaw = (config.contextAfter !== undefined) ? config.contextAfter : config.context_after;
+                    const ca = (caRaw === "all") ? "all" : (typeof caRaw === "number" ? caRaw : (parseInt(caRaw, 10) || 0));
+
+                    const pos = orderedClozeNums.indexOf(clNum);
+                    const hasPositions = (pos !== -1 && activePos !== -1);
+                    const isBefore = hasPositions ? (pos < activePos) : (clNum < activeIdx);
+
+                    if (isBefore) {
+                        const prevDist = hasPositions ? (activePos - pos) : (activeIdx - clNum);
+                        const inContext = (cb === "all") || (typeof cb === "number" && cb >= 0 && prevDist <= cb);
+                        if (inContext) {
+                            return '<span class="cloze-context cloze-context-prev" data-cloze-idx="' + clNum + '">' + answer + '</span>';
+                        }
+                        return "";
+                    } else {
+                        const afterDist = hasPositions ? (pos - activePos) : (clNum - activeIdx);
+                        const inContextAfter = (ca === "all") || (typeof ca === "number" && ca >= 0 && afterDist <= ca);
+                        if (inContextAfter) {
+                            return '<span class="cloze-context cloze-context-after" data-cloze-idx="' + clNum + '">' + answer + '</span>';
+                        }
+                        return "";
+                    }
                 }
-            } else {
-                return '<span class="cloze passive" data-cloze-idx="' + clNum + '" data-answer="' + safeAnswer + '" data-hint="' + safeHint + '" data-state="revealed" data-original-text="' + originalText + '" style="pointer-events: auto !important; cursor: pointer !important;">' + answer + '</span>';
             }
+            return "";
         });
         
-        frontContentEl.innerHTML = enrichedHtml;
+        let cleanedHtml = enrichedHtml.replace(/<li\b[^>]*>\s*(?:[•\-*]|\d+[\.\)])?\s*<\/li>/gi, "")
+                                     .replace(/<(div|p)\b[^>]*>\s*(?:[•\-*]|\d+[\.\)])?\s*<\/\1>/gi, "")
+                                     .replace(/(?:^|\n)\s*(?:[•\-*]|\d+[\.\)])?\s*<br\s*\/?>/gi, "")
+                                     .replace(/[ \t]{2,}/g, " ");
+        frontContentEl.innerHTML = cleanedHtml;
+
+        if (isContextMode && !isBackCard) {
+            const maskedNext = frontContentEl.querySelectorAll(".cloze-context-next-masked");
+            maskedNext.forEach(function(el) {
+                const li = el.closest("li");
+                if (li) {
+                    const clone = li.cloneNode(true);
+                    const subMasks = clone.querySelectorAll(".cloze-context-next-masked");
+                    subMasks.forEach(function(sm) { sm.remove(); });
+                    if ((clone.textContent || "").trim() === "") {
+                        li.style.display = "none";
+                    }
+                }
+            });
+        }
     }
     
-    // Select all clozes
-    const clozes = document.querySelectorAll(".cloze");
+    const cardContainer = container;
+    if (cardContainer) {
+        if (config.reviewMode === "sequential_context") {
+            cardContainer.classList.add("mode-context");
+        } else {
+            cardContainer.classList.remove("mode-context");
+        }
+    }
+
+    // Select all clozes strictly within this card container
+    const clozes = container.querySelectorAll(".cloze");
     
     clozes.forEach(function(cloze) {
         const text = (cloze.innerText || cloze.textContent || "").trim();
-        const isBlank = cloze.hasAttribute("data-answer") || text.includes("...") || (text.startsWith("[") && text.endsWith("]"));
+        const isBlank = cloze.hasAttribute("data-answer") || text.includes("...") || text.includes("…") || (text.startsWith("[") && text.endsWith("]")) || cloze.classList.contains("cloze");
         
-        const clozeIdxAttr = cloze.getAttribute("data-cloze-idx");
         let isActive = false;
-        if (clozeIdxAttr && config.activeClozeIdx) {
-            isActive = (parseInt(clozeIdxAttr, 10) === config.activeClozeIdx);
+        if (config.reviewMode === "sequential_context") {
+            const clozeIdxAttr = cloze.getAttribute("data-cloze-idx");
+            if (clozeIdxAttr && config.activeClozeIdx) {
+                isActive = (parseInt(clozeIdxAttr, 10) === config.activeClozeIdx);
+            } else {
+                isActive = isBlank || cloze.classList.contains("active");
+            }
         } else {
-            isActive = isBlank || cloze.classList.contains("active");
+            // SEQUENTIAL REVEAL: All cloze blanks start as active and hidden as [...] on front side
+            isActive = true;
         }
         
         const hint = cloze.getAttribute("data-hint") || "";
+        const canonicalMarker = hint ? "[" + hint + "]" : "[...]";
         
         if (isActive) {
             cloze.classList.add("active");
             cloze.classList.remove("passive");
             
             if (isBackCard) {
-                cloze.setAttribute("data-state", "revealed");
-                if (!cloze.getAttribute("data-answer")) {
-                    cloze.setAttribute("data-answer", cloze.innerHTML);
-                }
+                var currentTxt = (cloze.innerText || cloze.textContent || cloze.innerHTML || "").trim();
+                var isExplicitlyHidden = (cloze.getAttribute("data-state") === "hidden") || currentTxt === "[...]" || currentTxt === "..." || currentTxt === canonicalMarker;
+                var shouldBeRevealed = !isExplicitlyHidden || (config.autoRevealBack !== false);
+
                 if (!cloze.getAttribute("data-original-text")) {
-                    cloze.setAttribute("data-original-text", hint ? "[" + hint + "]" : "[...]");
+                    cloze.setAttribute("data-original-text", canonicalMarker);
                 }
-                if (config.clozeRevealedCustom && config.clozeRevealedColor) {
-                    cloze.style.color = config.clozeRevealedColor;
+
+                if (shouldBeRevealed) {
+                    cloze.setAttribute("data-state", "revealed");
+                    cloze.classList.add("revealed");
+                    if (!cloze.getAttribute("data-answer") && currentTxt !== "[...]" && currentTxt !== "...") {
+                        cloze.setAttribute("data-answer", cloze.innerHTML);
+                    }
+                    if (config.clozeRevealedCustom && config.clozeRevealedColor) {
+                        cloze.style.color = config.clozeRevealedColor;
+                    } else {
+                        cloze.style.color = "";
+                        cloze.style.removeProperty("color");
+                    }
+                } else {
+                    cloze.setAttribute("data-state", "hidden");
+                    cloze.classList.remove("revealed");
+                    cloze.innerHTML = canonicalMarker;
+                    if (config.clozeHiddenCustom && config.clozeHiddenColor) {
+                        cloze.style.color = config.clozeHiddenColor;
+                    } else {
+                        cloze.style.color = "";
+                        cloze.style.removeProperty("color");
+                    }
                 }
             } else {
-                cloze.setAttribute("data-state", "hidden");
-                if (!cloze.getAttribute("data-original-text")) {
-                    cloze.setAttribute("data-original-text", cloze.innerHTML);
-                }
-                if (config.clozeHiddenCustom && config.clozeHiddenColor) {
-                    cloze.style.color = config.clozeHiddenColor;
+                var currentState = cloze.getAttribute("data-state");
+                if (currentState === "revealed") {
+                    cloze.classList.add("revealed");
+                    if (config.clozeRevealedCustom && config.clozeRevealedColor) {
+                        cloze.style.color = config.clozeRevealedColor;
+                    } else {
+                        cloze.style.color = "";
+                        cloze.style.removeProperty("color");
+                    }
+                } else {
+                    cloze.setAttribute("data-state", "hidden");
+                    cloze.classList.remove("revealed");
+                    cloze.setAttribute("data-original-text", canonicalMarker);
+                    if (config.reviewMode !== "sequential_context") {
+                        // Unconditionally canonical marker [...] on front side: NO "..." EVER
+                        cloze.innerHTML = canonicalMarker;
+                    }
+                    if (config.clozeHiddenCustom && config.clozeHiddenColor) {
+                        cloze.style.color = config.clozeHiddenColor;
+                    } else {
+                        cloze.style.color = "";
+                        cloze.style.removeProperty("color");
+                    }
                 }
             }
+            cloze.style.pointerEvents = "auto";
+            cloze.style.touchAction = "manipulation";
+            cloze.style.cursor = "pointer";
         } else {
             cloze.classList.add("passive");
             cloze.classList.remove("active");
@@ -530,39 +855,79 @@ window.setupClozeInteractions = function() {
             cloze.style.color = "";
         }
         
-        if (config.enableClickReveal) {
+        // Touch & Click Interactions:
+        // Clicking/tapping [...] must reliably reveal the cloze on desktop and mobile!
+        var isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 768) || /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent || "");
+        var shouldAttachListener = true;
+
+        if (shouldAttachListener) {
             if (!cloze.hasAttribute("data-has-listener")) {
                 cloze.setAttribute("data-has-listener", "true");
                 
-                var lastTouchTime = 0;
-                const handleInteract = function(e) {
+                var lastTouchEndTime = 0;
+                var touchStartX = 0;
+                var touchStartY = 0;
+                var touchDidMove = false;
+
+                cloze.addEventListener("touchstart", function(e) {
+                    if (e.touches && e.touches.length > 0) {
+                        touchStartX = e.touches[0].clientX;
+                        touchStartY = e.touches[0].clientY;
+                        touchDidMove = false;
+                    }
+                }, { passive: true });
+
+                cloze.addEventListener("touchmove", function(e) {
+                    if (e.touches && e.touches.length > 0) {
+                        var dx = Math.abs(e.touches[0].clientX - touchStartX);
+                        var dy = Math.abs(e.touches[0].clientY - touchStartY);
+                        if (dx > 24 || dy > 24) {
+                            touchDidMove = true;
+                        }
+                    }
+                }, { passive: true });
+
+                cloze.addEventListener("touchcancel", function() {
+                    touchDidMove = false;
+                }, { passive: true });
+
+                var handleInteract = function(e) {
                     if (e.type === "touchend") {
-                        lastTouchTime = Date.now();
+                        if (touchDidMove) {
+                            return; // User was scrolling on mobile, do not reveal
+                        }
+                        lastTouchEndTime = Date.now();
+                        window._lastTouchEndTime = lastTouchEndTime;
                     } else if (e.type === "click") {
-                        if (Date.now() - lastTouchTime < 450) {
+                        if (Date.now() - lastTouchEndTime < 600) {
                             return; // Suppress simulated ghost click following touchend on mobile
                         }
                     }
-                    e.stopPropagation();
-                    e.preventDefault();
+                    if (e.stopPropagation) e.stopPropagation();
+                    if (e.cancelable && e.preventDefault) e.preventDefault();
                     
-                    if (cloze.classList.contains("active")) {
-                        if (cloze.getAttribute("data-state") === "hidden") {
-                            window.revealCloze(cloze);
-                        } else {
-                            window.hideCloze(cloze);
-                        }
+                    var state = cloze.getAttribute("data-state");
+                    var isRevealedState = (state === "revealed" || cloze.classList.contains("revealed"));
+                    var currentText = (cloze.innerText || cloze.textContent || "").trim();
+                    var origMarker = (cloze.getAttribute("data-original-text") || "[...]").trim();
+                    
+                    var isHidden = (state === "hidden") || (!isRevealedState) || (currentText === origMarker) || (currentText === "[...]") || (currentText === "...");
+
+                    if (isHidden) {
+                        window.revealCloze(cloze);
+                    } else if (cloze.classList.contains("active")) {
+                        window.hideCloze(cloze);
                     } else if (cloze.classList.contains("passive")) {
                         window.togglePassiveCloze(cloze);
                     }
                 };
                 
-                cloze.addEventListener("click", handleInteract);
                 cloze.addEventListener("touchend", handleInteract, { passive: false });
+                cloze.addEventListener("click", handleInteract, false);
                 
                 cloze.addEventListener("dblclick", function(e) {
-                    e.stopPropagation();
-                    e.preventDefault();
+                    if (e.stopPropagation) e.stopPropagation();
+                    if (e.cancelable && e.preventDefault) e.preventDefault();
                     if (cloze.classList.contains("active")) {
                         window.hideCloze(cloze);
                     }
@@ -570,6 +935,30 @@ window.setupClozeInteractions = function() {
             }
         }
     });
+
+    // Delegated container click fallback: guarantees clickability even if any node is refreshed
+    if (!container.hasAttribute("data-has-delegated-cloze-click")) {
+        container.setAttribute("data-has-delegated-cloze-click", "true");
+        container.addEventListener("click", function(e) {
+            var targetCloze = e.target && typeof e.target.closest === "function" ? e.target.closest(".cloze") : null;
+            if (!targetCloze || !container.contains(targetCloze)) return;
+            if (Date.now() - (window._lastTouchEndTime || 0) < 600) return;
+
+            var state = targetCloze.getAttribute("data-state");
+            var isRevealedState = (state === "revealed" || targetCloze.classList.contains("revealed"));
+            var currentText = (targetCloze.innerText || targetCloze.textContent || "").trim();
+            var origMarker = (targetCloze.getAttribute("data-original-text") || "[...]").trim();
+            var isHidden = (state === "hidden") || (!isRevealedState) || (currentText === origMarker) || (currentText === "[...]") || (currentText === "...");
+
+            if (isHidden) {
+                window.revealCloze(targetCloze);
+            } else if (targetCloze.classList.contains("active")) {
+                window.hideCloze(targetCloze);
+            } else if (targetCloze.classList.contains("passive")) {
+                window.togglePassiveCloze(targetCloze);
+            }
+        }, false);
+    }
     
     window.updateClozeSequencing();
     
@@ -631,8 +1020,8 @@ window.setupClozeInteractions = function() {
 
         // 5. Info toggle shortcut (Default: H)
         if (eventMatchesShortcut(parsedInfo, e)) {
-            var rawInfo = document.getElementById("raw-info");
-            var infoBtn = document.getElementById("info-toggle-btn");
+            var rawInfo = currentContainer.querySelector("#raw-info");
+            var infoBtn = currentContainer.querySelector("#info-toggle-btn");
             if (infoBtn || (rawInfo && rawInfo.innerHTML.trim())) {
                 e.preventDefault();
                 window.toggleInfo();
@@ -643,8 +1032,8 @@ window.setupClozeInteractions = function() {
 
         // 6. Image toggle shortcut (Default: G)
         if (eventMatchesShortcut(parsedImage, e)) {
-            var rawImg = document.getElementById("raw-image");
-            var imgBtn = document.getElementById("image-toggle-btn");
+            var rawImg = currentContainer.querySelector("#raw-image");
+            var imgBtn = currentContainer.querySelector("#image-toggle-btn");
             if (imgBtn || (rawImg && rawImg.innerHTML.trim())) {
                 e.preventDefault();
                 window.toggleCardImage();
@@ -705,6 +1094,12 @@ window.setupClozeInteractions = function() {
         window._sqWheelHandler = function(e) {
             var cContainer = document.querySelector(".anki-card-container");
             if (!cContainer || _ibWheelLocked) return;
+
+            // Minimum delta threshold to suppress trackpad micro-movements and inertia drift
+            var absDeltaY = Math.abs(e.deltaY);
+            var minThreshold = e.deltaMode === 1 ? 1 : (e.deltaMode === 2 ? 1 : 20);
+            if (absDeltaY < minThreshold) return;
+
             var dir = e.deltaY > 0 ? "down" : (e.deltaY < 0 ? "up" : null);
             if (!dir) return;
 
@@ -755,69 +1150,239 @@ window.setupClozeInteractions = function() {
         };
         document.addEventListener("mousedown", window._sqMouseHandler, false);
     }
+
+    if (typeof window.updateClozeSequencing === "function") {
+        window.updateClozeSequencing();
+    }
 };
 
 window.updateClozeSequencing = function() {
-    const hiddenActive = document.querySelectorAll(".cloze.active[data-state='hidden']");
-    document.querySelectorAll(".cloze").forEach(function(el) {
+    const container = document.querySelector(".anki-card-container");
+    if (!container) return;
+    const isBack = container.querySelector("#answer-splitter") !== null || container.querySelector(".minimal-back") !== null;
+    const conf = window.MINIMAL_CLOZE_CONFIG || {};
+    const isBold = !!(conf.boldClozeText || conf.bold_cloze_text);
+    const activeIdx = conf.activeClozeIdx ? parseInt(conf.activeClozeIdx, 10) : 1;
+
+    // Apply bold-cloze container class
+    if (isBold) {
+        container.classList.add("bold-cloze");
+    } else {
+        container.classList.remove("bold-cloze");
+    }
+
+    const allClozes = container.querySelectorAll(".cloze");
+    allClozes.forEach(function(el) {
         el.classList.remove("current-cloze");
+        el.removeAttribute("data-active-cloze");
     });
-    if (hiddenActive.length > 0) {
-        hiddenActive[0].classList.add("current-cloze");
+
+    // Apply font-weight and state strictly to cloze answers:
+    // Only revealed cloze answers are bold (700) when isBold is true.
+    // Context items (.cloze-context-prev, .cloze-context-after) and hidden markers stay 400.
+    const allClozesList = container.querySelectorAll(".cloze");
+    allClozesList.forEach(function(el) {
+        const state = el.getAttribute("data-state");
+        const currentText = (el.innerText || el.textContent || el.innerHTML || "").trim();
+        const origMarker = (el.getAttribute("data-original-text") || "[...]").trim();
+        const isRevealed = (state === "revealed" || el.classList.contains("revealed")) && (currentText !== origMarker && currentText !== "[...]" && currentText !== "...");
+
+        if (isRevealed) {
+            el.classList.add("revealed");
+            el.setAttribute("data-state", "revealed");
+            el.style.fontWeight = isBold ? "700" : "400";
+        } else {
+            el.classList.remove("revealed");
+            el.setAttribute("data-state", "hidden");
+            el.style.fontWeight = "400";
+        }
+        el.style.pointerEvents = "auto";
+        el.style.cursor = "pointer";
+    });
+
+    const allContexts = container.querySelectorAll(".cloze-context, .cloze-context-prev, .cloze-context-after");
+    allContexts.forEach(function(el) {
+        el.style.fontWeight = "400";
+    });
+
+    let activeEl = null;
+
+    if (!isBack) {
+        // FRONT: The active cloze the user must guess
+        const hiddenActive = container.querySelectorAll(".cloze.active[data-state='hidden']");
+        if (hiddenActive.length > 0) {
+            if (conf.reviewMode === "sequential_context") {
+                for (let i = 0; i < hiddenActive.length; i++) {
+                    const cidx = hiddenActive[i].getAttribute("data-cloze-idx");
+                    if (cidx && parseInt(cidx, 10) === activeIdx) {
+                        activeEl = hiddenActive[i];
+                        break;
+                    }
+                }
+                if (!activeEl) activeEl = hiddenActive[0];
+            } else {
+                // Sequential Reveal: The first unrevealed cloze is the one the user must guess
+                activeEl = hiddenActive[0];
+            }
+        }
+    } else {
+        // BACK: Track active cloze matching activeIdx
+        if (conf.reviewMode === "sequential_context") {
+            const revealedClozes = container.querySelectorAll(".cloze.revealed, .cloze[data-state='revealed']");
+            for (let i = 0; i < revealedClozes.length; i++) {
+                const cidx = revealedClozes[i].getAttribute("data-cloze-idx");
+                if (cidx && parseInt(cidx, 10) === activeIdx) {
+                    activeEl = revealedClozes[i];
+                    break;
+                }
+            }
+            if (!activeEl && revealedClozes.length > 0) {
+                activeEl = revealedClozes[0];
+            }
+        } else {
+            // Sequential Reveal on Back: Find cloze matching activeIdx
+            for (let i = 0; i < allClozes.length; i++) {
+                const cidx = allClozes[i].getAttribute("data-cloze-idx");
+                if (cidx && parseInt(cidx, 10) === activeIdx) {
+                    activeEl = allClozes[i];
+                    break;
+                }
+            }
+            if (!activeEl && allClozes.length > 0) {
+                activeEl = allClozes[0];
+            }
+        }
+    }
+
+    if (activeEl) {
+        activeEl.classList.add("current-cloze");
+        activeEl.setAttribute("data-active-cloze", "true");
     }
 };
 
 window.revealCloze = function(el) {
-    if (el.getAttribute("data-state") === "hidden") {
-        el.style.opacity = "0";
-        const conf = window.MINIMAL_CLOZE_CONFIG || {};
-        const animDelay = Math.max(20, Math.min(150, Math.round((conf.revealSpeed || 120) * 0.5)));
-        setTimeout(function() {
-            const actualAnswer = el.getAttribute("data-answer");
-            if (actualAnswer) {
-                el.innerHTML = actualAnswer;
-            } else {
-                el.innerHTML = el.innerHTML.replace(/\[|\]/g, '');
+    const container = document.querySelector(".anki-card-container");
+    if (!container || !el) return;
+
+    var actualAnswer = el.getAttribute("data-answer");
+    if (!actualAnswer) {
+        // Multi-platform safety fallback: parse #raw-front if data-answer was missing on mobile
+        const cardCont = el.closest(".anki-card-container") || container;
+        const rawEl = cardCont ? cardCont.querySelector("#raw-front") : null;
+        if (rawEl) {
+            const rawText = rawEl.innerHTML || rawEl.textContent || "";
+            const clozPattern = /\{\{c(\d+)::(.*?)\}\}/gi;
+            const allAnswers = [];
+            let m;
+            while ((m = clozPattern.exec(rawText)) !== null) {
+                const cParts = m[2].split("::");
+                const ans = cParts.length > 1 ? cParts.slice(0, -1).join("::") : m[2];
+                allAnswers.push(ans.trim());
             }
-            el.setAttribute("data-state", "revealed");
-            if (conf.clozeRevealedCustom && conf.clozeRevealedColor) {
-                el.style.color = conf.clozeRevealedColor;
-            } else {
-                el.style.color = "";
+            const allClozes = Array.from(cardCont.querySelectorAll(".cloze"));
+            const myIdx = allClozes.indexOf(el);
+            if (myIdx !== -1 && myIdx < allAnswers.length) {
+                actualAnswer = allAnswers[myIdx];
+                el.setAttribute("data-answer", actualAnswer);
             }
+        }
+    }
+
+    if (actualAnswer) {
+        el.innerHTML = actualAnswer;
+    } else {
+        const orig = el.getAttribute("data-original-text") || "[...]";
+        el.innerHTML = orig;
+    }
+    el.setAttribute("data-state", "revealed");
+    el.classList.add("revealed");
+    el.style.pointerEvents = "auto";
+    el.style.cursor = "pointer";
+
+    const conf = window.MINIMAL_CLOZE_CONFIG || {};
+    if (conf.clozeRevealedCustom && conf.clozeRevealedColor) {
+        el.style.color = conf.clozeRevealedColor;
+    } else {
+        el.style.color = "";
+        el.style.removeProperty("color");
+    }
+    const isBold = Boolean(conf.boldClozeText || conf.bold_cloze_text || container.classList.contains("bold-cloze"));
+    el.style.fontWeight = isBold ? "700" : "400";
+    el.style.textDecoration = "";
+
+    const revealSpeed = parseInt(conf.revealSpeed || (container.style.getPropertyValue('--reveal-speed') || "120"), 10);
+    if (revealSpeed > 0) {
+        el.style.opacity = "0.75";
+        requestAnimationFrame(function() {
             el.style.opacity = "1";
-            window.updateClozeSequencing();
-            
-            const remainingHidden = document.querySelectorAll(".cloze.active[data-state='hidden']");
-            const shouldAutoReveal = (conf.autoRevealBack !== undefined) ? conf.autoRevealBack : true;
-            if (remainingHidden.length === 0 && shouldAutoReveal) {
-                if (window.pycmd) {
-                    window.pycmd("ans");
-                } else if (typeof showAnswer === "function") {
-                    showAnswer();
-                }
-            }
-        }, animDelay);
+        });
+    } else {
+        el.style.opacity = "1";
+    }
+
+    window.updateClozeSequencing();
+    
+    const isBack = container.querySelector("#answer-splitter") !== null || container.querySelector(".minimal-back") !== null;
+    const remainingHidden = container.querySelectorAll(".cloze.active[data-state='hidden']");
+    const shouldAutoReveal = (conf.autoRevealBack !== undefined) ? conf.autoRevealBack : true;
+    if (!isBack && remainingHidden.length === 0 && shouldAutoReveal) {
+        if (window.pycmd) {
+            window.pycmd("ans");
+        } else if (typeof showAnswer === "function") {
+            showAnswer();
+        }
     }
 };
 
 window.hideCloze = function(el) {
-    if (el.getAttribute("data-state") === "revealed" && el.classList.contains("active")) {
-        el.style.opacity = "0";
-        const conf = window.MINIMAL_CLOZE_CONFIG || {};
-        const animDelay = Math.max(20, Math.min(150, Math.round((conf.revealSpeed || 120) * 0.5)));
-        setTimeout(function() {
-            const originalText = el.getAttribute("data-original-text") || "[...]";
-            el.innerHTML = originalText;
-            el.setAttribute("data-state", "hidden");
-            if (conf.clozeHiddenCustom && conf.clozeHiddenColor) {
-                el.style.color = conf.clozeHiddenColor;
-            } else {
-                el.style.color = "";
-            }
+    const container = document.querySelector(".anki-card-container");
+    if (!container || !el) return;
+
+    // Cache current answer in data-answer before replacing innerHTML
+    const currentText = (el.innerText || el.textContent || "").trim();
+    const origMarker = (el.getAttribute("data-original-text") || "[...]").trim();
+    if (currentText !== origMarker && currentText !== "[...]" && currentText !== "...") {
+        el.setAttribute("data-answer", el.innerHTML);
+    }
+
+    const originalText = el.getAttribute("data-original-text") || "[...]";
+    el.innerHTML = originalText;
+    el.setAttribute("data-state", "hidden");
+    el.classList.remove("revealed");
+    el.style.pointerEvents = "auto";
+    el.style.cursor = "pointer";
+
+    const conf = window.MINIMAL_CLOZE_CONFIG || {};
+    if (conf.clozeHiddenCustom && conf.clozeHiddenColor) {
+        el.style.color = conf.clozeHiddenColor;
+    } else {
+        el.style.color = "";
+        el.style.removeProperty("color");
+    }
+    el.style.fontWeight = "400";
+    el.style.textDecoration = "";
+
+    const hideSpeed = parseInt(conf.revealSpeed || (container.style.getPropertyValue('--reveal-speed') || "120"), 10);
+    if (hideSpeed > 0) {
+        el.style.opacity = "0.75";
+        requestAnimationFrame(function() {
             el.style.opacity = "1";
-            window.updateClozeSequencing();
-        }, animDelay);
+        });
+    } else {
+        el.style.opacity = "1";
+    }
+
+    window.updateClozeSequencing();
+};
+
+window.revealAllClozes = function() {
+    var container = document.querySelector(".anki-card-container");
+    if (!container) return;
+    var activeHiddenClozes = container.querySelectorAll(".cloze.active[data-state='hidden']");
+    if (activeHiddenClozes && activeHiddenClozes.length > 0) {
+        activeHiddenClozes.forEach(function(c) {
+            window.revealCloze(c);
+        });
     }
 };
 
@@ -831,24 +1396,198 @@ window.togglePassiveCloze = function(el) {
     }
 };
 
-// Auto-execute initialization for mobile (AnkiMobile / AnkiDroid) and standalone contexts
-if (typeof window.setupClozeInteractions === "function") {
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", function() {
-            window.setupClozeInteractions();
-        });
+window.applyClozeConfigLive = function(newConfig) {
+    if (!newConfig) return;
+    window.MINIMAL_CLOZE_CONFIG = Object.assign({}, window.MINIMAL_CLOZE_CONFIG || {}, newConfig);
+    const config = window.MINIMAL_CLOZE_CONFIG;
+    const container = document.querySelector(".anki-card-container");
+    if (!container) return;
+
+    // 1. Reveal speed CSS property
+    container.style.setProperty('--reveal-speed', (config.revealSpeed || 120) + "ms");
+
+    // 2. Cloze custom colors
+    if (config.clozeRevealedCustom && config.clozeRevealedColor) {
+        container.style.setProperty('--cloze-revealed-color', config.clozeRevealedColor);
     } else {
+        container.style.removeProperty('--cloze-revealed-color');
+    }
+    if (config.clozeHiddenCustom && config.clozeHiddenColor) {
+        container.style.setProperty('--cloze-hidden-color', config.clozeHiddenColor);
+    } else {
+        container.style.removeProperty('--cloze-hidden-color');
+    }
+
+    var liveClozes = container.querySelectorAll(".cloze.active");
+    liveClozes.forEach(function(c) {
+        var state = c.getAttribute("data-state");
+        if (state === "revealed") {
+            if (config.clozeRevealedCustom && config.clozeRevealedColor) {
+                c.style.color = config.clozeRevealedColor;
+            } else {
+                c.style.color = "";
+                c.style.removeProperty("color");
+            }
+        } else {
+            if (config.clozeHiddenCustom && config.clozeHiddenColor) {
+                c.style.color = config.clozeHiddenColor;
+            } else {
+                c.style.color = "";
+                c.style.removeProperty("color");
+            }
+        }
+    });
+
+    // 3. Font family & font size
+    var fontFamilies = {
+        "System Default": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+        "Arial": "Arial, Helvetica, sans-serif",
+        "Georgia": "Georgia, Cambria, 'Times New Roman', Times, serif",
+        "Times New Roman": "'Times New Roman', Times, Georgia, serif",
+        "Courier New": "'Courier New', Courier, monospace",
+        "Segoe UI": "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+        "SF Pro": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', sans-serif",
+        "Comic Sans MS": "'Comic Sans MS', 'Comic Sans', cursive, sans-serif"
+    };
+    var chosenFont = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+    if (config.fontFamily && fontFamilies[config.fontFamily]) {
+        chosenFont = fontFamilies[config.fontFamily];
+    } else if (config.fontFamily && config.fontFamily !== "System Default") {
+        chosenFont = (config.fontFamily.indexOf(' ') !== -1 && config.fontFamily.indexOf('"') === -1)
+            ? '"' + config.fontFamily + '", sans-serif'
+            : config.fontFamily;
+    }
+    container.style.setProperty('--card-font-family', chosenFont);
+    container.style.fontFamily = chosenFont;
+
+    var chosenFontSize = (config.fontSize ? config.fontSize : 20) + "px";
+    container.style.setProperty('--card-font-size', chosenFontSize);
+    container.style.fontSize = chosenFontSize;
+
+    var frontEl = container.querySelector(".minimal-front");
+    if (frontEl) {
+        frontEl.style.fontFamily = chosenFont;
+        frontEl.style.fontSize = chosenFontSize;
+    }
+    var backEl = container.querySelector(".minimal-back");
+    if (backEl) {
+        backEl.style.fontFamily = chosenFont;
+        backEl.style.fontSize = chosenFontSize;
+    }
+
+    // Bold cloze text: Container-level class when enabled
+    if (config.boldClozeText || config.bold_cloze_text) {
+        container.classList.add("bold-cloze");
+    } else {
+        container.classList.remove("bold-cloze");
+    }
+
+    // 4. Controls position (.ctrl)
+    const ctrlEl = container.querySelector(".ctrl");
+    if (ctrlEl) {
+        ctrlEl.classList.remove(
+            "pos-top-right", "pos-top-left", "pos-bottom-right", "pos-bottom-left",
+            "ctrl-top-right", "ctrl-top-left", "ctrl-bottom-right", "ctrl-bottom-left"
+        );
+        const cpos = config.controlsPosition || "top-right";
+        ctrlEl.classList.add("pos-" + cpos);
+    }
+
+    // 5. Card Vertical Position & Horizontal Alignment
+    const vpos = config.cardVerticalPosition || (config.mitcentMode ? "center" : (config.centerMode ? "center" : "top"));
+    const halign = config.cardHorizontalAlign || (config.centerMode ? "center" : "left");
+    container.classList.remove(
+        "vpos-top", "vpos-center", "vpos-bottom",
+        "halign-left", "halign-center", "halign-right",
+        "center-mode", "mitcent-mode", "left-mode"
+    );
+    container.classList.add("vpos-" + vpos, "halign-" + halign);
+    container.setAttribute("data-vpos", vpos);
+    container.setAttribute("data-halign", halign);
+    if (halign === "center" && vpos === "center") {
+        container.classList.add("center-mode", "mitcent-mode");
+    } else if (halign === "center") {
+        container.classList.add("center-mode");
+    } else if (halign === "left") {
+        container.classList.add("left-mode");
+    }
+
+    // 6. Cloze element colors updated live; font weight strictly handled on active cloze only
+    const allClozes = container.querySelectorAll(".cloze");
+    allClozes.forEach(function(cloze) {
+        const state = cloze.getAttribute("data-state");
+        if (state === "revealed") {
+            if (config.clozeRevealedCustom && config.clozeRevealedColor) {
+                cloze.style.color = config.clozeRevealedColor;
+            } else {
+                cloze.style.color = "";
+                cloze.style.removeProperty("color");
+            }
+        } else if (state === "hidden") {
+            if (config.clozeHiddenCustom && config.clozeHiddenColor) {
+                cloze.style.color = config.clozeHiddenColor;
+            } else {
+                cloze.style.color = "";
+                cloze.style.removeProperty("color");
+            }
+        }
+    });
+
+    if (typeof window.updateClozeSequencing === "function") {
+        window.updateClozeSequencing();
+    }
+
+    // 7. Auto-reveal on back card
+    const isBack = container.querySelector("#answer-splitter") !== null || container.querySelector(".minimal-back") !== null;
+    if (isBack && config.autoRevealBack && typeof window.revealAllClozes === "function") {
+        window.revealAllClozes();
+    }
+
+    // 8. Info by default
+    const extraArea = container.querySelector("#extra-area");
+    if (extraArea && config.showInfoByDefault && extraArea.getAttribute("data-mode") !== "info" && typeof window.toggleInfo === "function") {
+        window.toggleInfo();
+    }
+
+    // 9. Review mode container class & live context re-render
+    if (config.reviewMode === "sequential_context") {
+        container.classList.add("mode-context");
+    } else {
+        container.classList.remove("mode-context");
+    }
+    if (newConfig.reviewMode !== undefined || newConfig.contextBefore !== undefined || newConfig.contextAfter !== undefined || newConfig.contextMaskSubsequent !== undefined || newConfig.backContextBefore !== undefined || newConfig.backContextAfter !== undefined || newConfig.back_context_before !== undefined || newConfig.back_context_after !== undefined) {
+        if (frontEl) {
+            frontEl.removeAttribute("data-interactive-rendered");
+        }
+    }
+
+    // 10. Teardown and re-setup listeners so new bindings take effect immediately
+    if (typeof window.teardownClozeInteractions === "function") {
+        window.teardownClozeInteractions();
+    }
+    if (typeof window.setupClozeInteractions === "function") {
         window.setupClozeInteractions();
     }
-    setTimeout(function() {
-        if (typeof window.setupClozeInteractions === "function") {
+};
+
+// Auto-execute initialization strictly when .anki-card-container is present
+(function() {
+    if (!document.querySelector(".anki-card-container")) {
+        if (typeof window.teardownClozeInteractions === "function") {
+            window.teardownClozeInteractions();
+        }
+        return;
+    }
+    if (typeof window.setupClozeInteractions === "function") {
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", function() {
+                if (document.querySelector(".anki-card-container")) {
+                    window.setupClozeInteractions();
+                }
+            });
+        } else {
             window.setupClozeInteractions();
         }
-    }, 40);
-    setTimeout(function() {
-        if (typeof window.setupClozeInteractions === "function") {
-            window.setupClozeInteractions();
-        }
-    }, 150);
-}
+    }
+})();
 

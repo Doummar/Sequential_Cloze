@@ -1,28 +1,38 @@
 {
-  "controls_position": "top-right",
-  "card_vertical_position": "center",
-  "card_horizontal_align": "center",
-  "font_family": "System Default",
-  "font_size": 18,
-  "center_mode": true,
-  "mitcent_mode": true,
-  "reveal_speed": 120,
-  "enable_click_reveal": true,
-  "show_info_by_default": false,
-  "enable_dark_compatibility": true,
-  "auto_reveal_back": true,
-  "cloze_revealed_custom": false,
-  "cloze_revealed_color": "#c00000",
-  "cloze_hidden_custom": false,
-  "cloze_hidden_color": "#0284c7",
-  "shortcut_roll": "Space",
-  "shortcut_reveal_all": "Shift + Space",
-  "shortcut_info": "H",
-  "shortcut_image": "G",
-  "auto_theme_mode": true,
-  "input_bindings": {
-    "reveal": [
-      { "type": "wheel", "value": "down" }
-    ]
-  }
+    "controls_position": "top-right",
+    "card_vertical_position": "top",
+    "card_horizontal_align": "center",
+    "font_family": "System Default",
+    "font_size": 20,
+    "bold_cloze_text": false,
+    "center_mode": true,
+    "mitcent_mode": false,
+    "reveal_speed": 120,
+    "enable_click_reveal": true,
+    "show_info_by_default": false,
+    "enable_dark_compatibility": true,
+    "auto_reveal_back": false,
+    "cloze_revealed_custom": false,
+    "cloze_revealed_color": "#c00000",
+    "cloze_hidden_custom": false,
+    "cloze_hidden_color": "#0284c7",
+    "review_mode": "sequential_reveal",
+    "context_before": 1,
+    "context_after": 0,
+    "context_mask_subsequent": true,
+    "back_context_before": "all",
+    "back_context_after": "all",
+    "shortcut_roll": "Space",
+    "shortcut_reveal_all": "Shift + Space",
+    "shortcut_info": "H",
+    "shortcut_image": "G",
+    "auto_theme_mode": true,
+    "input_bindings": {
+        "reveal": [
+            {
+                "type": "wheel",
+                "value": "down"
+            }
+        ]
+    }
 }
